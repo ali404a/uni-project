@@ -34,14 +34,36 @@ body{
   color:var(--ink);
 }
 
-/* على الهاتف: يملأ الشاشة بالكامل بلا أي جوانب.
-   على الأجهزة الأكبر: يتوسّط بإطار وحواف منحنية. */
+/* على الهاتف: عمود واحد يملأ الشاشة.
+   على الكمبيوتر: يمتد على كامل العرض، والقوائم تتحول لشبكة متعددة الأعمدة. */
 .phone{
   width:100%;height:100dvh;
   background:var(--bg);position:relative;overflow:hidden;
   display:flex;flex-direction:column;margin:0 auto;
 }
-@media(min-width:700px){
+@media(min-width:900px){
+  .phone{max-width:100%;height:100vh;border-radius:0}
+  .appbar{padding:0 40px;height:70px}
+  .appbar-name{font-size:22px}
+  .appbar-logo{width:44px;height:44px}
+  /* القوائم الشبكية: بطاقات متعددة الأعمدة تملأ العرض */
+  #deptList,#uniList,#instList,#newsList,#libList,#cmpList,#groupBody>.uni-row,
+  .quick{max-width:1400px;margin-inline:auto}
+  #deptList,#uniList,#instList{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+    gap:16px;padding:0 40px}
+  #deptList .count-bar,#deptList>.btn{grid-column:1/-1}
+  .dept-card{margin:0}
+  /* شاشات التفاصيل تبقى متوسّطة بعرض مريح */
+  #detailBody,#groupBody,#uniDetailBody,#cmpForm,#cmpResult,#view-compare>.page-h,
+  .view>.page-h,.slider,.dots,.sec-head,.hello,.topbar{max-width:1100px;margin-inline:auto}
+  #groupBody .uni-row,#cmpList .mini-dept,.price-card,.tool-card,.news-card,
+  .info-card,.range-card,.mini-stats,.detail-hero,.result-head,.seg,.action-row,
+  .intro-card,.field,.two,#view-compare>.page-h .btn{max-width:1100px;margin-inline:auto}
+  /* الشريط السفلي يتوسّط */
+  .tabbar{max-width:700px;margin-inline:auto;border-radius:24px 24px 0 0}
+}
+@media(min-width:700px) and (max-width:899px){
   body{background:#cfd9f0;display:flex;align-items:center;justify-content:center;min-height:100vh}
   .phone{max-width:440px;height:min(920px,96vh);border-radius:44px;
     box-shadow:0 40px 90px rgba(0,0,0,.28)}
@@ -149,6 +171,15 @@ body{
 .dept-card{background:var(--card);border-radius:24px;padding:18px;margin:0 20px 14px;box-shadow:var(--shadow-sm);
   border:1px solid var(--line);cursor:pointer;transition:.2s;position:relative;overflow:hidden}
 .dept-card:active{transform:scale(.985)}
+.count-bar{font-size:12.5px;font-weight:700;color:var(--muted);margin:0 20px 12px;padding:8px 14px;background:var(--card);border-radius:12px;border:1px solid var(--line);text-align:center}
+.uni-row{background:var(--card);border-radius:16px;padding:14px 16px;margin:0 20px 10px;box-shadow:var(--shadow-sm);border:1px solid var(--line);display:flex;align-items:center;gap:12px;transition:.2s}
+.uni-row .ur-rank{width:30px;height:30px;border-radius:9px;background:var(--blue-soft);color:var(--blue);display:grid;place-items:center;font-weight:900;font-size:13px;flex:none}
+.uni-row .ur-info{flex:1;min-width:0}
+.uni-row .ur-info b{font-size:14.5px;font-weight:800;display:block}
+.uni-row .ur-info span{font-size:11.5px;color:var(--muted);font-weight:600}
+.uni-row .ur-rate{text-align:center;flex:none;background:var(--green-soft);border-radius:11px;padding:7px 12px}
+.uni-row .ur-rate b{font-size:14px;font-weight:900;color:#3aa76d;display:block}
+.uni-row .ur-rate small{font-size:9.5px;color:#5a9a75}
 .dept-tags{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
 .dc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px}
 .dc-top .dept-tags{margin-bottom:0}
@@ -375,9 +406,9 @@ body{
         <div class="two">
           <div class="field"><label>الدور</label><select id="cRound"><option>الأول</option><option>الثاني</option><option>الثالث</option></select></div>
           <div class="field"><label>الصف / الفرع</label><select id="cBranch">
-            <option value="">علمي — الأحيائي</option>
-            <option value="التطبيقي">علمي — التطبيقي</option>
-            <option value="الأدبي">أدبي</option>
+            <option value="علمي">علمي</option>
+            <option value="أدبي">أدبي</option>
+            <option value="فنون">فنون</option>
           </select></div>
         </div>
         <button class="btn" onclick="runCompare()">اعرض التخصصات القريبة</button>
@@ -393,9 +424,9 @@ body{
       <div class="search"><span class="search-ic" id="dsi"></span><input id="deptSearch" placeholder="ابحث عن قسم أو جامعة حكومية..."></div>
       <div class="filter-row" id="branchFilter">
         <div class="fpill on" data-b="">الكل</div>
-        <div class="fpill" data-b="الأحيائي">الأحيائي</div>
-        <div class="fpill" data-b="التطبيقي">التطبيقي</div>
-        <div class="fpill" data-b="الأدبي">الأدبي</div>
+        <div class="fpill" data-b="علمي">علمي</div>
+        <div class="fpill" data-b="أدبي">أدبي</div>
+        <div class="fpill" data-b="فنون">فنون</div>
       </div>
       <div id="deptList"><div class="loading"><div class="spin"></div>جارٍ التحميل...</div></div>
     </div>
@@ -404,6 +435,12 @@ body{
     <div class="view" id="view-detail">
       <div class="page-h"><div class="back" onclick="go('depts')">→</div><h2>تفاصيل القسم</h2></div>
       <div id="detailBody"></div>
+    </div>
+
+    <!-- ═══════════ جامعات التخصص (تجميع) ═══════════ -->
+    <div class="view" id="view-group">
+      <div class="page-h"><div class="back" onclick="go('depts')">→</div><h2>جامعات التخصص</h2></div>
+      <div id="groupBody"></div>
     </div>
 
     <!-- ═══════════ المزيد ═══════════ -->
@@ -556,7 +593,7 @@ function deptIcon(d){
 let ALL_DEPTS=[];
 
 // ===== تنقّل =====
-const tabMap={home:'home',compare:'compare',depts:'depts2',unis:'unis',unidetail:'unis',inst:'more',more:'more',lib:'more'};
+const tabMap={home:'home',compare:'compare',depts:'depts2',group:'depts2',detail:'depts2',unis:'unis',unidetail:'unis',inst:'more',more:'more',lib:'more'};
 function go(view){
   $$('.view').forEach(v=>v.classList.remove('active'));
   $('#view-'+view).classList.add('active');
@@ -604,42 +641,71 @@ $('#newsList').innerHTML=NEWS.map(n=>`
   $$('[data-ic]').forEach(el=>{el.innerHTML=icon(el.dataset.ic==='chev'?'chev':el.dataset.ic, el.dataset.ic==='chev'?18:26);});
 })();
 
-// ===== الأقسام =====
+// ===== الأقسام (مجمّعة حسب التخصص) =====
 let curBranch='';
-// تصنيف الفرع إلى مجموعة علمي/أدبي مع اللون
+let ALL_GROUPS=[];
 function branchInfo(branch){
-  if(branch==='الأدبي')return{label:'أدبي',cls:'o'};
-  if(branch==='الأحيائي')return{label:'علمي أحيائي',cls:'g'};
-  if(branch==='التطبيقي')return{label:'علمي تطبيقي',cls:'b'};
+  if(branch==='أدبي'||branch==='الأدبي')return{label:'أدبي',cls:'o'};
+  if(branch==='فنون')return{label:'فنون',cls:'p'};
+  if(branch==='علمي'||branch==='الأحيائي'||branch==='التطبيقي')return{label:'علمي',cls:'g'};
   return{label:branch||'—',cls:'p'};
 }
-function deptCard(d){
-  const tagColors=['b','g','o','p'];
-  const tags=(d.tags||[]).slice(0,2).map((t,i)=>`<span class="tag ${tagColors[i%4]}">${t}</span>`).join('');
-  const bi=branchInfo(d.branch);
-  return `<div class="dept-card" onclick="openDept('${d.id}')">
+function groupCard(g){
+  const bi=branchInfo(g.branch);
+  const range=g.min_rate!=null?(g.min_rate===g.max_rate?g.max_rate+'٪':g.min_rate+'–'+g.max_rate+'٪'):'—';
+  return `<div class="dept-card" onclick='openGroup(${JSON.stringify(g.name)})'>
     <div class="dc-top">
-      <div class="dc-ico ${bi.cls}">${icon(deptIcon(d),24)}</div>
-      <div class="dept-tags">${tags||`<span class="tag b">${d.branch}</span>`}</div>
+      <div class="dc-ico ${bi.cls}">${icon(deptIcon({name:g.name,college_name:g.college_name}),24)}</div>
+      <div class="dept-tags"><span class="chip branch ${bi.cls}">${bi.label}</span></div>
     </div>
-    <h4>${d.name}</h4><div class="uni">${d.university_name||''} · ${d.college_name||''}</div>
+    <h4>${g.name}</h4>
+    <div class="uni">${g.college_name||''} · ${g.study_years} سنوات</div>
     <div class="dept-foot">
-      <div class="rate-badge">${d.last_rate!=null?d.last_rate+'٪':'—'}<small>آخر قبول</small></div>
-      <span class="chip branch ${bi.cls}">${bi.label}</span>
+      <div class="rate-badge">${range}<small>مدى القبول</small></div>
+      <span class="chip mid">${g.count} ${g.count>10?'جامعة':'جامعات'} ‹</span>
     </div></div>`;
 }
-function renderDepts(){
-  let out=ALL_DEPTS;
-  if(curBranch)out=out.filter(d=>d.branch===curBranch);
+let groupLimit=40;
+function renderDepts(reset){
+  if(reset!==false)groupLimit=40;
+  let out=ALL_GROUPS;
+  if(curBranch)out=out.filter(g=>g.branch===curBranch);
   const q=$('#deptSearch').value.trim();
-  if(q)out=out.filter(d=>d.name.includes(q)||(d.university_name||'').includes(q)||(d.tags||[]).some(t=>t.includes(q)));
-  $('#deptList').innerHTML=out.length?out.map(deptCard).join(''):`<div class="empty"><div class="ei">${icon("search",44)}</div><p>لا توجد نتائج مطابقة</p></div>`;
+  if(q)out=out.filter(g=>g.name.includes(q)||(g.college_name||'').includes(q)||g.offerings.some(o=>(o.university_name||'').includes(q)));
+  if(!out.length){$('#deptList').innerHTML=`<div class="empty"><div class="ei">${icon("search",44)}</div><p>لا توجد نتائج مطابقة</p></div>`;return;}
+  const shown=out.slice(0,groupLimit);
+  let html=`<div class="count-bar">${out.length} تخصص متاح · مجمّعة حسب التخصص</div>`+shown.map(groupCard).join('');
+  if(out.length>groupLimit) html+=`<button class="btn ghost" onclick="groupLimit+=40;renderDepts(false)">عرض المزيد (${out.length-groupLimit})</button><div style="height:8px"></div>`;
+  $('#deptList').innerHTML=html;
 }
 async function loadDepts(){
-  try{ALL_DEPTS=await api('/departments?uniType=حكومية');renderDepts();}
+  try{ALL_GROUPS=await api('/departments/grouped?uniType=حكومية');renderDepts();}
   catch(e){$('#deptList').innerHTML=`<div class="empty"><div class="ei">${icon("question",44)}</div><p>${e.message}</p></div>`;}
 }
-$('#deptSearch').addEventListener('input',renderDepts);
+// فتح تخصص: عرض كل الجامعات التي تدرّسه
+function openGroup(name){
+  const g=ALL_GROUPS.find(x=>x.name===name);
+  if(!g)return;
+  go('group');
+  $('#groupBody').innerHTML=`
+    <div class="detail-hero"><div class="orb"></div>
+      <div class="di">${icon(deptIcon({name:g.name,college_name:g.college_name}),30)}</div>
+      <h2>${g.name}</h2><p>${g.college_name||''} · ${g.study_years} سنوات دراسة</p></div>
+    <div class="mini-stats">
+      <div class="m"><b>${g.count}</b><span>جامعة</span></div>
+      <div class="m"><b>${g.max_rate!=null?g.max_rate+'٪':'—'}</b><span>أعلى قبول</span></div>
+      <div class="m"><b>${g.min_rate!=null?g.min_rate+'٪':'—'}</b><span>أدنى قبول</span></div>
+    </div>
+    <div class="sec-head"><h3>الجامعات المتاحة</h3><span style="color:var(--muted);font-size:12px">${g.count} جامعة</span></div>
+    ${g.offerings.map((o,i)=>`
+      <div class="uni-row">
+        <div class="ur-rank">${i+1}</div>
+        <div class="ur-info"><b>${o.university_name}</b><span>${o.college_name||''}</span></div>
+        <div class="ur-rate"><b>${o.last_rate!=null?o.last_rate+'٪':'—'}</b><small>${o.last_year||'قبول'}</small></div>
+      </div>`).join('')}
+    <div style="height:12px"></div>`;
+}
+$('#deptSearch').addEventListener('input',()=>renderDepts());
 $('#branchFilter').addEventListener('click',e=>{
   const p=e.target.closest('.fpill');if(!p)return;
   $$('#branchFilter .fpill').forEach(x=>x.classList.remove('on'));p.classList.add('on');
@@ -678,10 +744,12 @@ async function openDept(id){
 let CMP=null; // نتيجة آخر مقارنة
 
 function diffTag(diff){
-  // diff موجب = معدلك أعلى من القبول (فرصتك أعلى)
-  if(diff>=0.05) return `<span class="diff-tag diff-up">+${diff.toFixed(1)} فوقك</span>`;
-  if(diff<=-0.05) return `<span class="diff-tag diff-down">${Math.abs(diff).toFixed(1)} أعلى منك</span>`;
-  return `<span class="diff-tag diff-eq">مطابق</span>`;
+  // diff = معدل الطالب − معدل القبول
+  // diff موجب: معدل القبول أقل من معدلك (القسم في متناولك)
+  // diff سالب: معدل القبول أعلى من معدلك (القسم أصعب)
+  if(diff>=0.05) return `<span class="diff-tag diff-up">أقل بـ ${diff.toFixed(1)}</span>`;
+  if(diff<=-0.05) return `<span class="diff-tag diff-down">أعلى بـ ${Math.abs(diff).toFixed(1)}</span>`;
+  return `<span class="diff-tag diff-eq">مطابق لمعدلك</span>`;
 }
 
 async function runCompare(){
@@ -731,7 +799,7 @@ function renderCompare(){
 
   $('#cmpResult').innerHTML=`
     <div class="result-head"><div class="orb"></div>
-      <h3>${s.name}</h3><p>معدل ${s.avg}٪ · الدور ${s.round} · ${s.branch||'الأحيائي'}</p>
+      <h3>${s.name}</h3><p>معدل ${s.avg}٪ · الدور ${s.round} · ${s.branch||'علمي'}</p>
       <div class="rstats">
         <div><b>${CMP.counts.departments}</b><span>قسم قريب</span></div>
         <div><b>${CMP.counts.institutes}</b><span>معهد قريب</span></div>
@@ -890,7 +958,7 @@ function printForm(download){
       <div class="box"><small>اسم الطالب</small><b>${s.name}</b></div>
       <div class="box"><small>المعدل</small><b>${s.avg}٪</b></div>
       <div class="box"><small>المجموع</small><b>${s.total||'—'}</b></div>
-      <div class="box"><small>الدور / الفرع</small><b>${s.round} · ${s.branch||'الأحيائي'}</b></div>
+      <div class="box"><small>الدور / الفرع</small><b>${s.round} · ${s.branch||'علمي'}</b></div>
     </div>
 
     <h2>أقرب ${CMP.departments.length} قسماً جامعياً لمعدلك</h2>

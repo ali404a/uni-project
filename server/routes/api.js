@@ -17,6 +17,42 @@ r.get('/universities/:slug', async (req, res) => {
 });
 
 // ── الأقسام ──
+// ── الأقسام مجمّعة حسب التخصص (اسم القسم) ──
+r.get('/departments/grouped', async (req, res) => {
+  const { branch, uniType } = req.query;
+  const list = await store.departments({ branch, uniType });
+  const groups = new Map();
+  for (const d of list) {
+    const key = d.name;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        name: d.name, branch: d.branch, study_years: d.study_years,
+        college_name: d.college_name, count: 0,
+        min_rate: null, max_rate: null, offerings: [],
+      });
+    }
+    const g = groups.get(key);
+    g.count++;
+    g.offerings.push({
+      id: d.id, university_name: d.university_name, university_id: d.university_id,
+      college_name: d.college_name, last_rate: d.last_rate, last_year: d.last_year,
+      annual_fee: d.annual_fee ?? null, study_type: d.study_type,
+    });
+    if (d.last_rate != null) {
+      g.min_rate = g.min_rate == null ? d.last_rate : Math.min(g.min_rate, d.last_rate);
+      g.max_rate = g.max_rate == null ? d.last_rate : Math.max(g.max_rate, d.last_rate);
+    }
+  }
+  // ترتيب العروض داخل كل تخصص حسب المعدل تنازلياً
+  const out = [...groups.values()].map(g => {
+    g.offerings.sort((a, b) => (b.last_rate ?? 0) - (a.last_rate ?? 0));
+    return g;
+  });
+  // ترتيب التخصصات حسب أعلى معدل
+  out.sort((a, b) => (b.max_rate ?? 0) - (a.max_rate ?? 0));
+  res.json(out);
+});
+
 r.get('/departments', async (req, res) => {
   const { branch, q, uniType } = req.query;
   res.json(await store.departments({ branch, q, uniType }));
