@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>الأقسام الجامعية — درب التبانة</title>
+<link rel="stylesheet" href="/css/app.css">
+</head><body>
+<script src="/js/common.js"></script>
+<script>bootShell('/departments')</script>
+
+<div class="wrap">
+  <div class="crumbs"><a href="/">الرئيسية</a><span>/</span>الأقسام الجامعية</div>
+  <h1 class="page-title">الأقسام الجامعية</h1>
+  <p class="page-sub">قاعدة بيانات شاملة لجميع الأقسام مع معدلات القبول والنطاق المتوقع لهذا العام.</p>
+
+  <div class="toolbar" style="margin-top:24px">
+    <input id="q" placeholder="🔍 ابحث عن قسم أو جامعة أو تخصص...">
+    <select id="branch">
+      <option value="">كل الفروع</option>
+      <option>الأحيائي</option><option>التطبيقي</option><option>الأدبي</option>
+    </select>
+  </div>
+
+  <div id="list"><div class="loading"><div class="spin"></div>جارٍ تحميل الأقسام...</div></div>
+</div>
+
+<script>
+mountFooter(); revealOnScroll();
+let ALL = [];
+const list = $('#list');
+
+function chanceHtml(d){
+  if(d.last_rate==null) return `<span class="chance c-unknown">لا يوجد معدل</span>`;
+  return `<span class="pill">آخر قبول ${d.last_rate}٪ · ${d.last_year||''}</span>`;
+}
+function render(items){
+  if(!items.length){ list.innerHTML=`<div class="loading">لا توجد نتائج مطابقة.</div>`; return; }
+  list.innerHTML = `<div class="grid g3">`+items.map(d=>`
+    <a class="card reveal in" href="/department?id=${d.id}">
+      <div class="ic">${d.college_icon||'🎓'}</div>
+      <h3>${d.name}</h3>
+      <p>${d.university_name||''} · ${d.college_name||''}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+        <span class="pill">${d.branch}</span>
+        <span class="pill">${d.study_years} سنوات</span>
+      </div>
+      <div style="margin-top:12px">${chanceHtml(d)}</div>
+    </a>`).join('')+`</div>`;
+}
+function applyFilters(){
+  const q=$('#q').value.trim(), b=$('#branch').value;
+  let out=ALL;
+  if(b) out=out.filter(d=>d.branch===b);
+  if(q) out=out.filter(d=>d.name.includes(q)||(d.university_name||'').includes(q)||(d.tags||[]).some(t=>t.includes(q)));
+  render(out);
+}
+$('#q').addEventListener('input',applyFilters);
+$('#branch').addEventListener('change',applyFilters);
+
+(async()=>{
+  try{ ALL = await api('/departments'); render(ALL); }
+  catch(e){ list.innerHTML=`<div class="loading">تعذّر تحميل البيانات: ${e.message}</div>`; }
+})();
+</script>
+</body></html>

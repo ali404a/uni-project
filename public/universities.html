@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>الجامعات — درب التبانة</title>
+<link rel="stylesheet" href="/css/app.css">
+</head><body>
+<script src="/js/common.js"></script>
+<script>bootShell('/universities')</script>
+
+<div class="wrap">
+  <div class="crumbs"><a href="/">الرئيسية</a><span>/</span>الجامعات</div>
+  <h1 class="page-title">الجامعات العراقية</h1>
+  <p class="page-sub">استكشف الجامعات الحكومية والأهلية وكلياتها والأقسام المتوفرة فيها.</p>
+
+  <div class="toolbar" style="margin-top:24px">
+    <input id="q" placeholder="🔍 ابحث عن جامعة أو مدينة...">
+    <select id="type"><option value="">كل الأنواع</option><option>حكومية</option><option>أهلية</option></select>
+  </div>
+  <div id="list"><div class="loading"><div class="spin"></div>جارٍ تحميل الجامعات...</div></div>
+</div>
+
+<script>
+mountFooter();
+let ALL=[]; const list=$('#list');
+function render(items){
+  if(!items.length){ list.innerHTML='<div class="loading">لا توجد نتائج.</div>'; return; }
+  list.innerHTML=`<div class="grid g2">`+items.map(u=>`
+    <a class="card reveal in" href="/university?slug=${u.slug}">
+      <div style="display:flex;justify-content:space-between;align-items:start">
+        <div class="ic">🏛️</div>
+        <span class="pill ${u.type==='حكومية'?'gov':'priv'}">${u.type}</span>
+      </div>
+      <h3>${u.name}</h3>
+      <p>${u.description||''}</p>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+        ${u.city?`<span class="pill">📍 ${u.city}</span>`:''}
+        ${u.established?`<span class="pill">تأسست ${u.established}</span>`:''}
+      </div>
+    </a>`).join('')+`</div>`;
+}
+function apply(){
+  const q=$('#q').value.trim(),t=$('#type').value;
+  let out=ALL;
+  if(t) out=out.filter(u=>u.type===t);
+  if(q) out=out.filter(u=>u.name.includes(q)||(u.city||'').includes(q));
+  render(out);
+}
+$('#q').addEventListener('input',apply); $('#type').addEventListener('change',apply);
+(async()=>{ try{ ALL=await api('/universities'); render(ALL); }
+  catch(e){ list.innerHTML=`<div class="loading">تعذّر التحميل: ${e.message}</div>`; } })();
+</script>
+</body></html>

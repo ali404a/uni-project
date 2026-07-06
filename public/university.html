@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>تفاصيل الجامعة — درب التبانة</title>
+<link rel="stylesheet" href="/css/app.css">
+</head><body>
+<script src="/js/common.js"></script>
+<script>bootShell('/universities')</script>
+
+<div class="wrap">
+  <div class="crumbs" id="crumbs"><a href="/">الرئيسية</a><span>/</span><a href="/universities">الجامعات</a></div>
+  <div id="body"><div class="loading"><div class="spin"></div>جارٍ تحميل الجامعة...</div></div>
+</div>
+
+<script>
+mountFooter();
+const body=$('#body');
+(async()=>{
+  const slug=qs('slug');
+  if(!slug){ body.innerHTML='<div class="loading">لم تُحدَّد الجامعة.</div>'; return; }
+  try{
+    const u=await api('/universities/'+slug);
+    document.title=`${u.name} — درب التبانة`;
+    $('#crumbs').insertAdjacentHTML('beforeend',`<span>/</span>${u.name}`);
+
+    // أقسام هذه الجامعة
+    const allDepts=await api('/departments');
+    const uniDepts=allDepts.filter(d=>d.university_id===u.id);
+
+    body.innerHTML=`
+      <div class="hero-panel reveal in">
+        <div style="display:flex;justify-content:space-between;align-items:start;gap:16px;flex-wrap:wrap">
+          <div>
+            <div class="ic" style="width:60px;height:60px;font-size:30px;border-radius:16px;margin-bottom:14px;background:var(--panel-2);border:1px solid var(--line);display:grid;place-items:center">🏛️</div>
+            <h1 class="page-title" style="margin:0">${u.name}</h1>
+            <p class="page-sub">${u.description||''}</p>
+          </div>
+          <span class="pill ${u.type==='حكومية'?'gov':'priv'}">${u.type}</span>
+        </div>
+        <div class="stat-row">
+          ${u.city?`<div class="stat"><b>${u.city}</b><span>المدينة</span></div>`:''}
+          ${u.established?`<div class="stat"><b>${u.established}</b><span>سنة التأسيس</span></div>`:''}
+          <div class="stat"><b>${(u.colleges||[]).length}</b><span>كلية</span></div>
+          <div class="stat"><b>${uniDepts.length}</b><span>قسم متاح</span></div>
+        </div>
+        ${u.website?`<a class="btn btn-ghost" style="margin-top:20px" href="${u.website}" target="_blank" rel="noopener">الموقع الرسمي ↗</a>`:''}
+      </div>
+
+      <h2 class="disp" style="font-size:22px;margin:30px 0 16px">الكليات</h2>
+      <div class="grid g3">${(u.colleges||[]).map(c=>`
+        <div class="card"><div class="ic">${c.icon||'📚'}</div><h3 style="font-size:17px">${c.name}</h3></div>`).join('')||'<p style="color:var(--dim)">لم تُضف الكليات بعد.</p>'}</div>
+
+      <h2 class="disp" style="font-size:22px;margin:30px 0 16px">الأقسام المتوفرة</h2>
+      <div class="grid g3">${uniDepts.map(d=>`
+        <a class="card" href="/department?id=${d.id}">
+          <div class="ic">${d.college_icon||'🎓'}</div>
+          <h3 style="font-size:17px">${d.name}</h3>
+          <p>${d.branch} · ${d.study_years} سنوات</p>
+          ${d.last_rate!=null?`<div style="margin-top:10px"><span class="pill">آخر قبول ${d.last_rate}٪</span></div>`:''}
+        </a>`).join('')||'<p style="color:var(--dim)">لا توجد أقسام مسجلة بعد.</p>'}</div>`;
+    revealOnScroll();
+  }catch(e){ body.innerHTML=`<div class="loading">تعذّر تحميل الجامعة: ${e.message}</div>`; }
+})();
+</script>
+</body></html>
