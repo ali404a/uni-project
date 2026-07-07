@@ -151,7 +151,13 @@ input,select,textarea{font-family:inherit}
     <div class="sub">درب التبانة الجامعي</div>
     <div class="login-err" id="loginErr"></div>
     <div class="field"><label>اسم المستخدم</label><input id="username" autocomplete="username" placeholder="admin"></div>
-    <div class="field"><label>كلمة المرور</label><input id="password" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+    <div class="field" style="position:relative">
+      <label>كلمة المرور</label>
+      <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" style="padding-left:44px;">
+      <button type="button" onclick="const p=document.getElementById('password'); p.type=p.type==='password'?'text':'password'" style="position:absolute;left:10px;top:32px;background:none;border:none;color:var(--muted);padding:8px;display:flex;">
+        <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/></svg>
+      </button>
+    </div>
     <button class="btn" id="loginBtn" onclick="doLogin()">تسجيل الدخول</button>
   </div>
 </div>

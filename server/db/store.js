@@ -204,7 +204,7 @@ export const store = {
   // ═══════════ الأدمن ═══════════
   async adminByUsername(username) {
     if (usingSupabase) {
-      const { data } = await supabase.from('admin_users').select('*').eq('username', username).single();
+      const { data } = await supabaseAdmin.from('admin_users').select('*').eq('username', username).single();
       return data;
     }
     // محلياً: أدمن افتراضي للتجربة (admin / darb2026)
