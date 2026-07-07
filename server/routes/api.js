@@ -263,4 +263,15 @@ r.put('/admin/settings', requireAdmin, async (req, res) => {
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+// ── الأقسام مجمّعة حسب التخصص (اسم القسم) ──
+r.get('/departments/grouped', async (req, res) => {
+  try { res.json(await store.groupedDepartments(req.query)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+r.get('/departments/:id/rates', async (req, res) => {
+  try { res.json(await store.getHistoricalRates(req.params.id)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 export default r;

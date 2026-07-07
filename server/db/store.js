@@ -363,15 +363,25 @@ export const store = {
   // ── تعديل الحد الأدنى للقبول ──
   async setAdmissionRate(departmentId, { year = 2025, branch = 'علمي', min_rate }) {
     if (usingSupabase) {
-      const { data, error } = await supabase.from('admission_rates')
-        .upsert({ department_id: departmentId, year, branch, min_rate }, { onConflict: 'department_id,year,branch' })
+      const { data, error } = await supabaseAdmin.from('admission_rates')
+        .upsert({ department_id: departmentId, year, branch, min_rate }, { onConflict: 'department_id, year, branch' })
         .select().single();
       if (error) throw new Error(error.message);
       return data;
     }
-    const d = local.departments.find(x => x.id === departmentId);
-    if (d) { d.last_rate = min_rate; d.rates = [{ year, branch, min_rate }]; }
-    return d;
+    const r = local.admission_rates.find(x => x.department_id === departmentId && x.year === year && x.branch === branch);
+    if (r) { r.min_rate = min_rate; return r; }
+    const nr = { id: 'r-new-' + Date.now(), department_id: departmentId, year, branch, min_rate };
+    local.admission_rates.push(nr); return nr;
+  },
+  async getHistoricalRates(departmentId) {
+    if (usingSupabase) {
+      const { data, error } = await supabase.from('admission_rates')
+        .select('*').eq('department_id', departmentId).order('year', { ascending: false });
+      if (error) throw new Error(error.message);
+      return data || [];
+    }
+    return local.admission_rates.filter(x => x.department_id === departmentId).sort((a, b) => b.year - a.year);
   },
 
   // ── تعديل رسوم القسم الأهلي ──
