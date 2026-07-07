@@ -72,6 +72,9 @@ r.get('/news', async (req, res) => res.json(await store.news({ featured: req.que
 
 // ── المكتبة ──
 r.get('/library', async (_req, res) => res.json(await store.library()));
+r.get('/banners', async (_req, res) => res.json(await store.banners()));
+r.get('/quick-links', async (_req, res) => res.json(await store.quickLinks()));
+r.get('/settings', async (_req, res) => res.json(await store.settings()));
 
 // ── محرك التخصصات ──
 r.post('/engine/match', async (req, res) => {
@@ -199,8 +202,38 @@ r.post('/admin/news', requireAdmin, async (req, res) => {
   try { res.status(201).json(await store.createNews(req.body)); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
+r.patch('/admin/news/:id', requireAdmin, async (req, res) => {
+  try { res.json(await store.updateNews(req.params.id, req.body)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
 r.delete('/admin/news/:id', requireAdmin, async (req, res) => {
   try { await store.deleteNews(req.params.id); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// ── البنرات (السلايدر) ──
+r.post('/admin/banners', requireAdmin, async (req, res) => {
+  try { res.status(201).json(await store.createBanner(req.body)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+r.patch('/admin/banners/:id', requireAdmin, async (req, res) => {
+  try { res.json(await store.updateBanner(req.params.id, req.body)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+r.delete('/admin/banners/:id', requireAdmin, async (req, res) => {
+  try { await store.deleteBanner(req.params.id); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// ── الخدمات السريعة ──
+r.patch('/admin/quick-links/:id', requireAdmin, async (req, res) => {
+  try { res.json(await store.updateQuickLink(req.params.id, req.body)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// ── الإعدادات العامة ──
+r.put('/admin/settings', requireAdmin, async (req, res) => {
+  try { res.json(await store.updateSettings(req.body)); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 

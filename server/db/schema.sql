@@ -171,3 +171,33 @@ do $$ begin
   execute 'create policy p_read_news on news for select using (true)';
   execute 'create policy p_read_lib on library for select using (true)';
 exception when duplicate_object then null; end $$;
+
+-- ═══ البنرات (السلايدر في الصفحة الرئيسية) ═══
+create table if not exists banners (
+  id uuid primary key default uuid_generate_v4(),
+  title text not null, subtitle text default '', tag text default '',
+  icon text default 'megaphone', gradient text default 's1',
+  link text default '', is_active boolean default true, sort_order int default 1000,
+  created_at timestamptz default now()
+);
+
+-- ═══ الخدمات السريعة (أزرار الرئيسية) ═══
+create table if not exists quick_links (
+  id uuid primary key default uuid_generate_v4(),
+  label text not null, icon text default 'cap', target text default 'depts',
+  color text default 'b', is_active boolean default true, sort_order int default 1000
+);
+
+-- ═══ إعدادات عامة (اسم الموقع، الروابط، نصوص…) ═══
+create table if not exists site_settings (
+  key text primary key, value text default '', updated_at timestamptz default now()
+);
+
+alter table banners enable row level security;
+alter table quick_links enable row level security;
+alter table site_settings enable row level security;
+do $$ begin
+  execute 'create policy p_read_ban on banners for select using (true)';
+  execute 'create policy p_read_ql on quick_links for select using (true)';
+  execute 'create policy p_read_ss on site_settings for select using (true)';
+exception when duplicate_object then null; end $$;

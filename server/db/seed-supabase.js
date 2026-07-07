@@ -96,18 +96,49 @@ async function run() {
   console.log(`✅ معاهد: ${instRows.length}`);
 
   // 6) الأخبار والمكتبة
-  if (seed.news?.length) await db.from('news').insert(seed.news.map(n => ({
-    category: n[1] || 'خبر', icon: n[0] || 'news', title: n[4] || n.title || '', body: n[5] || '',
-  })).filter(n => n.title)).then(({ error }) => error && console.warn('أخبار:', error.message));
+  if (seed.news?.length) {
+    const newsRows = seed.news.map((n, i) => Array.isArray(n)
+      ? { category: n[1] || 'خبر', icon: n[0] || 'news', title: n[4] || '', body: n[5] || '', color: n[2] || '', sort_order: i }
+      : { category: n.category || 'خبر', icon: n.icon || 'news', title: n.title || '', body: n.body || '', color: n.color || '', sort_order: i })
+      .filter(n => n.title);
+    await db.from('news').insert(newsRows).then(({ error }) => error && console.warn('أخبار:', error.message));
+    console.log(`✅ أخبار: ${newsRows.length}`);
+  }
 
-  // 7) مستخدم الأدمن الافتراضي
+  // 7) البنرات (السلايدر)
+  if (seed.banners?.length) {
+    const banRows = seed.banners.map((b, i) => ({
+      title: b.title, subtitle: b.subtitle || '', tag: b.tag || '',
+      icon: b.icon || 'megaphone', gradient: b.gradient || 's1', link: b.link || '', sort_order: i,
+    }));
+    await db.from('banners').insert(banRows).then(({ error }) => error && console.warn('بنرات:', error.message));
+    console.log(`✅ بنرات: ${banRows.length}`);
+  }
+
+  // 8) الخدمات السريعة
+  if (seed.quick_links?.length) {
+    const qlRows = seed.quick_links.map((q, i) => ({
+      label: q.label, icon: q.icon || 'cap', target: q.target || 'depts', color: q.color || 'b', sort_order: i,
+    }));
+    await db.from('quick_links').insert(qlRows).then(({ error }) => error && console.warn('خدمات:', error.message));
+    console.log(`✅ خدمات سريعة: ${qlRows.length}`);
+  }
+
+  // 9) الإعدادات العامة
+  if (seed.settings) {
+    const setRows = Object.entries(seed.settings).map(([key, value]) => ({ key, value: String(value) }));
+    await db.from('site_settings').upsert(setRows, { onConflict: 'key' }).then(({ error }) => error && console.warn('إعدادات:', error.message));
+    console.log(`✅ إعدادات: ${setRows.length}`);
+  }
+
+  // 10) مستخدم الأدمن الافتراضي
   const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'darb2026', 10);
   await db.from('admin_users').upsert({
     username: 'admin', password_hash: hash, display_name: 'مدير النظام', role: 'admin',
   }, { onConflict: 'username' });
   console.log(`✅ أدمن: admin / ${process.env.ADMIN_PASSWORD || 'darb2026'}`);
 
-  console.log('\n🎉 اكتمل الرفع بنجاح!');
+  console.log('\n🎉 اكتمل رفع كل البيانات بنجاح!');
 }
 
 run().catch(e => { console.error('❌ خطأ:', e.message); process.exit(1); });

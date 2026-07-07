@@ -189,6 +189,12 @@ input,select,textarea{font-family:inherit}
       <div class="nav-item" data-page="news" onclick="nav('news')">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h6M7 16h8" stroke-linecap="round"/></svg>
         الأخبار</div>
+      <div class="nav-item" data-page="banners" onclick="nav('banners')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 15l5-4 4 3 3-2 6 4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="9" r="1.3"/></svg>
+        البنرات والإعلانات</div>
+      <div class="nav-item" data-page="settings" onclick="nav('settings')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" stroke-linecap="round"/></svg>
+        إعدادات الموقع</div>
     </aside>
 
     <main class="main" id="main"><div class="loading"><div class="spin"></div>جارٍ التحميل...</div></main>
@@ -258,7 +264,7 @@ function nav(page){
   currentPage=page;
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('on',n.dataset.page===page));
   document.querySelector('.side').classList.remove('open');
-  const pages={stats:renderStats,depts:renderDepts,unis:renderUnis,priv:renderPriv,news:renderNews};
+  const pages={stats:renderStats,depts:renderDepts,unis:renderUnis,priv:renderPriv,news:renderNews,banners:renderBanners,settings:renderSettings};
   (pages[page]||renderStats)();
 }
 
@@ -577,39 +583,163 @@ async function saveFee(id){
 }
 
 // ═══════════ 5) الأخبار ═══════════
+// ═══════════ 5) الأخبار (CRUD كامل) ═══════════
+let ALL_NEWS=[];
+const NEWS_CATS={'خبر':['news','var(--orange-soft)','#e8843a'],'موعد':['megaphone','var(--blue-soft)','#3b6eff'],'نصيحة':['bulb','var(--green-soft)','#16a34a']};
 async function renderNews(){
   const m=$('#main');
-  m.innerHTML=`
-    <div class="page-title">الأخبار</div>
-    <div class="page-sub">إدارة الأخبار والإعلانات الظاهرة في الصفحة الرئيسية</div>
-    <div class="toolbar">
-      <button class="btn green sm" onclick="newsModal()">${ico('plus',16)} خبر جديد</button>
-    </div>
-    <div id="newsList"><div class="count-info">الأخبار تُدار من قاعدة البيانات. اربط Supabase لتفعيل الإضافة الكاملة.</div></div>`;
+  m.innerHTML='<div class="loading"><div class="spin"></div>جارٍ التحميل...</div>';
+  try{
+    ALL_NEWS=await api('/news');
+    m.innerHTML=`
+      <div class="page-title">الأخبار والإعلانات</div>
+      <div class="page-sub">تُعرض في قسم "آخر الأخبار" بالصفحة الرئيسية</div>
+      <div class="toolbar"><button class="btn green sm" onclick="newsModal()">${ico('plus',16)} خبر جديد</button></div>
+      <div id="newsList"></div>`;
+    renderNewsList();
+  }catch(e){m.innerHTML=`<div class="empty">${ico('empty',56)}<p>${e.message}</p></div>`;}
 }
-function newsModal(){
+function renderNewsList(){
+  $('#newsList').innerHTML=ALL_NEWS.length?ALL_NEWS.map(n=>{
+    const[ic,bg,col]=NEWS_CATS[n.category]||NEWS_CATS['خبر'];
+    return `<div class="data-card">
+      <div class="dc-badge" style="background:${bg};color:${col}">${n.category}</div>
+      <div class="dc-main"><b>${n.title}</b><span>${n.body||''}</span></div>
+      <div class="dc-actions">
+        <button class="icon-btn edit" onclick='newsModal(${JSON.stringify(n)})'>${ico('edit',17)}</button>
+        <button class="icon-btn del" onclick='delNews(${JSON.stringify(n.id)},${JSON.stringify(n.title)})'>${ico('trash',17)}</button>
+      </div></div>`;}).join(''):'<div class="empty">'+ico('empty',56)+'<p>لا توجد أخبار — أضف خبراً جديداً</p></div>';
+}
+function newsModal(n){
+  const e=n||{};
   openModal(`
-    <h3>خبر جديد</h3>
-    <div class="row2">
-      <div class="field"><label>التصنيف</label><select id="nCat"><option>خبر</option><option>موعد</option><option>نصيحة</option></select></div>
-      <div class="field"><label>الأيقونة</label><select id="nIcon"><option value="news">أخبار</option><option value="megaphone">إعلان</option><option value="bulb">نصيحة</option></select></div>
-    </div>
-    <div class="field"><label>العنوان</label><input id="nTitle" placeholder="عنوان الخبر"></div>
-    <div class="field"><label>النص</label><textarea id="nBody" rows="3" placeholder="تفاصيل الخبر"></textarea></div>
+    <h3>${n?'تعديل خبر':'خبر جديد'}</h3>
+    <div class="field"><label>التصنيف</label><select id="nCat">
+      <option ${e.category==='خبر'?'selected':''}>خبر</option>
+      <option ${e.category==='موعد'?'selected':''}>موعد</option>
+      <option ${e.category==='نصيحة'?'selected':''}>نصيحة</option></select></div>
+    <div class="field"><label>العنوان</label><input id="nTitle" value="${(e.title||'').replace(/"/g,'&quot;')}" placeholder="عنوان الخبر"></div>
+    <div class="field"><label>النص</label><textarea id="nBody" rows="3" placeholder="تفاصيل الخبر">${e.body||''}</textarea></div>
     <div class="modal-actions">
-      <button class="btn green" onclick="saveNews()">نشر</button>
+      <button class="btn ${n?'':'green'}" onclick='saveNews(${n?JSON.stringify(n.id):'null'})'>${n?'حفظ':'نشر'}</button>
       <button class="btn ghost" onclick="closeModal()">إلغاء</button>
     </div>`);
 }
-async function saveNews(){
+async function saveNews(id){
   const title=$('#nTitle').value.trim();
   if(!title){toast('أدخل عنوان الخبر',true);return;}
+  const cat=$('#nCat').value;
+  const payload={title,body:$('#nBody').value.trim(),category:cat,icon:(NEWS_CATS[cat]||['news'])[0]};
   try{
-    await api('/admin/news',{method:'POST',body:{
-      title,body:$('#nBody').value.trim(),category:$('#nCat').value,icon:$('#nIcon').value
-    }});
-    closeModal();toast('تم نشر الخبر');renderNews();
+    if(id){await api('/admin/news/'+id,{method:'PATCH',body:payload});
+      const n=ALL_NEWS.find(x=>x.id===id);if(n)Object.assign(n,payload);toast('تم الحفظ');}
+    else{const nn=await api('/admin/news',{method:'POST',body:payload});ALL_NEWS.unshift(nn);toast('تم النشر');}
+    closeModal();renderNewsList();
   }catch(e){toast(e.message,true);}
+}
+function delNews(id,title){
+  confirmModal(`حذف الخبر "${title}"؟`,async()=>{
+    try{await api('/admin/news/'+id,{method:'DELETE'});
+      ALL_NEWS=ALL_NEWS.filter(n=>n.id!==id);renderNewsList();toast('تم الحذف');
+    }catch(e){toast(e.message,true);}
+  });
+}
+
+// ═══════════ 6) البنرات (السلايدر) ═══════════
+let ALL_BANNERS=[];
+const GRADS={'s1':'أزرق','s2':'أخضر','s3':'برتقالي'};
+async function renderBanners(){
+  const m=$('#main');
+  m.innerHTML='<div class="loading"><div class="spin"></div>جارٍ التحميل...</div>';
+  try{
+    ALL_BANNERS=await api('/banners');
+    m.innerHTML=`
+      <div class="page-title">البنرات والإعلانات</div>
+      <div class="page-sub">الشرائح المتحركة أعلى الصفحة الرئيسية</div>
+      <div class="toolbar"><button class="btn green sm" onclick="bannerModal()">${ico('plus',16)} بنر جديد</button></div>
+      <div id="bannerList"></div>`;
+    renderBannerList();
+  }catch(e){m.innerHTML=`<div class="empty">${ico('empty',56)}<p>${e.message}</p></div>`;}
+}
+function renderBannerList(){
+  $('#bannerList').innerHTML=ALL_BANNERS.length?ALL_BANNERS.map(b=>`
+    <div class="data-card">
+      <div class="dc-badge badge-gov">${b.tag||GRADS[b.gradient]||'بنر'}</div>
+      <div class="dc-main"><b>${b.title}</b><span>${b.subtitle||''}</span></div>
+      <div class="dc-actions">
+        <button class="icon-btn edit" onclick='bannerModal(${JSON.stringify(b)})'>${ico('edit',17)}</button>
+        <button class="icon-btn del" onclick='delBanner(${JSON.stringify(b.id)},${JSON.stringify(b.title)})'>${ico('trash',17)}</button>
+      </div></div>`).join(''):'<div class="empty">'+ico('empty',56)+'<p>لا توجد بنرات</p></div>';
+}
+function bannerModal(b){
+  const e=b||{};
+  openModal(`
+    <h3>${b?'تعديل بنر':'بنر جديد'}</h3>
+    <div class="field"><label>العنوان</label><input id="bTitle" value="${(e.title||'').replace(/"/g,'&quot;')}" placeholder="عنوان البنر"></div>
+    <div class="field"><label>الوصف</label><input id="bSub" value="${(e.subtitle||'').replace(/"/g,'&quot;')}" placeholder="نص فرعي"></div>
+    <div class="row2">
+      <div class="field"><label>الوسم</label><input id="bTag" value="${(e.tag||'').replace(/"/g,'&quot;')}" placeholder="موعد مهم"></div>
+      <div class="field"><label>اللون</label><select id="bGrad">
+        <option value="s1" ${e.gradient==='s1'?'selected':''}>أزرق</option>
+        <option value="s2" ${e.gradient==='s2'?'selected':''}>أخضر</option>
+        <option value="s3" ${e.gradient==='s3'?'selected':''}>برتقالي</option></select></div>
+    </div>
+    <div class="field"><label>الأيقونة</label><select id="bIcon">
+      <option value="megaphone" ${e.icon==='megaphone'?'selected':''}>إعلان</option>
+      <option value="bulb" ${e.icon==='bulb'?'selected':''}>نصيحة</option>
+      <option value="news" ${e.icon==='news'?'selected':''}>خبر</option>
+      <option value="cap" ${e.icon==='cap'?'selected':''}>تعليم</option></select></div>
+    <div class="modal-actions">
+      <button class="btn ${b?'':'green'}" onclick='saveBanner(${b?JSON.stringify(b.id):'null'})'>${b?'حفظ':'إضافة'}</button>
+      <button class="btn ghost" onclick="closeModal()">إلغاء</button>
+    </div>`);
+}
+async function saveBanner(id){
+  const title=$('#bTitle').value.trim();
+  if(!title){toast('أدخل عنوان البنر',true);return;}
+  const payload={title,subtitle:$('#bSub').value.trim(),tag:$('#bTag').value.trim(),gradient:$('#bGrad').value,icon:$('#bIcon').value};
+  try{
+    if(id){await api('/admin/banners/'+id,{method:'PATCH',body:payload});
+      const b=ALL_BANNERS.find(x=>x.id===id);if(b)Object.assign(b,payload);toast('تم الحفظ');}
+    else{const nb=await api('/admin/banners',{method:'POST',body:payload});ALL_BANNERS.push(nb);toast('تمت الإضافة');}
+    closeModal();renderBannerList();
+  }catch(e){toast(e.message,true);}
+}
+function delBanner(id,title){
+  confirmModal(`حذف البنر "${title}"؟`,async()=>{
+    try{await api('/admin/banners/'+id,{method:'DELETE'});
+      ALL_BANNERS=ALL_BANNERS.filter(b=>b.id!==id);renderBannerList();toast('تم الحذف');
+    }catch(e){toast(e.message,true);}
+  });
+}
+
+// ═══════════ 7) إعدادات الموقع ═══════════
+async function renderSettings(){
+  const m=$('#main');
+  m.innerHTML='<div class="loading"><div class="spin"></div>جارٍ التحميل...</div>';
+  try{
+    const s=await api('/settings');
+    m.innerHTML=`
+      <div class="page-title">إعدادات الموقع</div>
+      <div class="page-sub">النصوص والروابط العامة الظاهرة في التطبيق</div>
+      <div class="chart-card">
+        <div class="field"><label>اسم الموقع</label><input id="sName" value="${(s.site_name||'').replace(/"/g,'&quot;')}"></div>
+        <div class="field"><label>الشعار (Tagline)</label><input id="sTag" value="${(s.tagline||'').replace(/"/g,'&quot;')}"></div>
+        <div class="field"><label>رسالة الترحيب</label><input id="sGreet" value="${(s.hero_greeting||'').replace(/"/g,'&quot;')}"></div>
+        <div class="field"><label>نص الترحيب الفرعي</label><input id="sSub" value="${(s.hero_sub||'').replace(/"/g,'&quot;')}"></div>
+        <div class="field"><label>رابط إنستغرام</label><input id="sIg" value="${(s.instagram||'').replace(/"/g,'&quot;')}"></div>
+        <button class="btn" style="margin-top:8px" onclick="saveSettings()">حفظ الإعدادات</button>
+      </div>`;
+  }catch(e){m.innerHTML=`<div class="empty">${ico('empty',56)}<p>${e.message}</p></div>`;}
+}
+async function saveSettings(){
+  const payload={
+    site_name:$('#sName').value.trim(), tagline:$('#sTag').value.trim(),
+    hero_greeting:$('#sGreet').value.trim(), hero_sub:$('#sSub').value.trim(),
+    instagram:$('#sIg').value.trim(),
+  };
+  try{await api('/admin/settings',{method:'PUT',body:payload});toast('تم حفظ الإعدادات');}
+  catch(e){toast(e.message,true);}
 }
 
 // ═══════════ نافذة منبثقة ═══════════

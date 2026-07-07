@@ -74,10 +74,17 @@ function buildLocalModel() {
     id: `i-${i}`, ...x, is_active: true,
     last_rate: instRates[x.slug] ?? null,
   }));
-  const news = seed.news.map((n, i) => ({ id: `n-${i}`, ...n, published: true, published_at: new Date().toISOString() }));
+  // الأخبار — تدعم الصيغة القديمة (مصفوفة) والجديدة (كائن)
+  const news = (seed.news || []).map((n, i) => {
+    if (Array.isArray(n)) return { id: `n-${i}`, icon: n[0], category: n[1], color: n[2], title: n[4], body: n[5], is_active: true };
+    return { id: n.id || `n-${i}`, is_active: true, ...n };
+  });
   const library = seed.library.map((l, i) => ({ id: `l-${i}`, ...l, downloads: 0 }));
+  const banners = (seed.banners || []).map((b, i) => ({ id: b.id || `b-${i}`, is_active: true, ...b }));
+  const quick_links = (seed.quick_links || []).map((q, i) => ({ id: q.id || `q-${i}`, is_active: true, ...q }));
+  const settings = seed.settings || {};
 
-  return { universities, colleges, departments, institutes, news, library };
+  return { universities, colleges, departments, institutes, news, library, banners, quick_links, settings };
 }
 
 // مفتاح القسم الكامل بصيغة university/college/dept
@@ -170,14 +177,10 @@ export const store = {
   // ── الأخبار ──
   async news({ featured } = {}) {
     if (usingSupabase) {
-      let q = supabase.from('news').select('*').eq('published', true).order('published_at', { ascending: false });
-      if (featured) q = q.eq('is_featured', true);
-      const { data } = await q;
+      const { data } = await supabase.from('news').select('*').eq('is_active', true).order('sort_order');
       return data || [];
     }
-    let list = local.news;
-    if (featured) list = list.filter(n => n.is_featured);
-    return list;
+    return (local.news || []).filter(n => n.is_active !== false);
   },
 
   // ── المكتبة ──
@@ -325,6 +328,74 @@ export const store = {
   async deleteNews(id) {
     if (usingSupabase) { await supabaseAdmin.from('news').delete().eq('id', id); return true; }
     const i = (local.news || []).findIndex(x => x.id === id); if (i >= 0) local.news.splice(i, 1); return true;
+  },
+  async updateNews(id, patch) {
+    if (usingSupabase) {
+      const { data, error } = await supabaseAdmin.from('news').update(patch).eq('id', id).select().single();
+      if (error) throw new Error(error.message); return data;
+    }
+    const n = (local.news || []).find(x => x.id === id); if (n) Object.assign(n, patch); return n;
+  },
+
+  // ═══════════ البنرات (السلايدر) ═══════════
+  async banners() {
+    if (usingSupabase) {
+      const { data } = await supabase.from('banners').select('*').eq('is_active', true).order('sort_order');
+      return data || [];
+    }
+    return (local.banners || []).filter(b => b.is_active !== false);
+  },
+  async createBanner(payload) {
+    if (usingSupabase) {
+      const { data, error } = await supabaseAdmin.from('banners').insert(payload).select().single();
+      if (error) throw new Error(error.message); return data;
+    }
+    const b = { id: 'b-' + Date.now(), is_active: true, sort_order: (local.banners||[]).length, ...payload };
+    (local.banners = local.banners || []).push(b); return b;
+  },
+  async updateBanner(id, patch) {
+    if (usingSupabase) {
+      const { data, error } = await supabaseAdmin.from('banners').update(patch).eq('id', id).select().single();
+      if (error) throw new Error(error.message); return data;
+    }
+    const b = (local.banners || []).find(x => x.id === id); if (b) Object.assign(b, patch); return b;
+  },
+  async deleteBanner(id) {
+    if (usingSupabase) { await supabaseAdmin.from('banners').delete().eq('id', id); return true; }
+    const i = (local.banners || []).findIndex(x => x.id === id); if (i >= 0) local.banners.splice(i, 1); return true;
+  },
+
+  // ═══════════ الخدمات السريعة ═══════════
+  async quickLinks() {
+    if (usingSupabase) {
+      const { data } = await supabase.from('quick_links').select('*').eq('is_active', true).order('sort_order');
+      return data || [];
+    }
+    return (local.quick_links || []).filter(q => q.is_active !== false);
+  },
+  async updateQuickLink(id, patch) {
+    if (usingSupabase) {
+      const { data, error } = await supabaseAdmin.from('quick_links').update(patch).eq('id', id).select().single();
+      if (error) throw new Error(error.message); return data;
+    }
+    const q = (local.quick_links || []).find(x => x.id === id); if (q) Object.assign(q, patch); return q;
+  },
+
+  // ═══════════ الإعدادات العامة ═══════════
+  async settings() {
+    if (usingSupabase) {
+      const { data } = await supabase.from('site_settings').select('*');
+      return Object.fromEntries((data || []).map(r => [r.key, r.value]));
+    }
+    return local.settings || {};
+  },
+  async updateSettings(patch) {
+    if (usingSupabase) {
+      const rows = Object.entries(patch).map(([key, value]) => ({ key, value, updated_at: new Date().toISOString() }));
+      await supabaseAdmin.from('site_settings').upsert(rows, { onConflict: 'key' });
+      return this.settings();
+    }
+    local.settings = { ...(local.settings || {}), ...patch }; return local.settings;
   },
 
   // ═══════════ الإحصائيات ═══════════

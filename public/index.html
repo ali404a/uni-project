@@ -367,15 +367,11 @@ body{
     <!-- ═══════════ 1) الرئيسية ═══════════ -->
     <div class="view active" id="view-home">
       <div class="topbar">
-        <div class="hello"><h1>أهلاً بك</h1><p>لنجد درب مستقبلك الجامعي</p></div>
+        <div class="hello"><h1 id="heroGreet">أهلاً بك</h1><p id="heroSub">لنجد درب مستقبلك الجامعي</p></div>
       </div>
 
-      <div class="slider" id="slider">
-        <div class="slide s1"><div class="orb"></div><span class="tag" id="sl-tag1"></span><div><h3>انطلاق التقديم المركزي 2026</h3><p>تعرّف على المواعيد والتعليمات الجديدة</p></div></div>
-        <div class="slide s2"><div class="orb"></div><span class="tag" id="sl-tag2"></span><div><h3>خمس نصائح قبل ترتيب رغباتك</h3><p>رتّب رغباتك بذكاء لتضمن مقعدك</p></div></div>
-        <div class="slide s3"><div class="orb"></div><span class="tag" id="sl-tag3"></span><div><h3>إعلان نتائج السادس الإعدادي</h3><p>استعلم عن نتيجتك عبر المنصة الرسمية</p></div></div>
-      </div>
-      <div class="dots" id="dots"><i class="on"></i><i></i><i></i></div>
+      <div class="slider" id="slider"></div>
+      <div class="dots" id="dots"></div>
 
       <div class="sec-head"><h3>خدمات سريعة</h3></div>
       <div class="quick">
@@ -610,22 +606,50 @@ function go(view){
 }
 
 // ===== سلايدر =====
+let _sliderCount=3, _sliderTimer=null;
 const slider=$('#slider');
 slider.addEventListener('scroll',()=>{
-  const i=Math.round(slider.scrollLeft/(slider.scrollWidth/3));
+  if(!_sliderCount)return;
+  const i=Math.round(slider.scrollLeft/(slider.scrollWidth/_sliderCount));
   $$('#dots i').forEach((d,x)=>d.classList.toggle('on',x===Math.abs(i)));
 });
+function initSlider(count){
+  _sliderCount=count;
+  if(_sliderTimer)clearInterval(_sliderTimer);
+  if(count<=1)return;
+  let idx=0;
+  _sliderTimer=setInterval(()=>{
+    idx=(idx+1)%count;
+    const w=slider.scrollWidth/count;
+    slider.scrollTo({left:idx*w,behavior:'smooth'});
+  },5000);
+}
 
-// ===== أخبار =====
-const NEWS=[
-  ['megaphone','موعد','var(--blue-soft)','#3b6eff','انطلاق التقديم المركزي 2026','أعلنت الوزارة عن مواعيد التقديم للعام الجديد.'],
-  ['bulb','نصيحة','var(--green-soft)','#3aa76d','رتّب رغباتك بذكاء','ابدأ بالطموح واختم بالمضمون لتأمين مقعدك.'],
-  ['news','خبر','var(--orange-soft)','#e8843a','إعلان النتائج','استعلم عن نتيجتك عبر المنصة الرسمية.'],
-];
-$('#newsList').innerHTML=NEWS.map(n=>`
-  <div class="news-card"><div class="ni" style="background:${n[2]};color:${n[3]}">${icon(n[0],24)}</div>
-    <div style="flex:1"><span class="cat" style="background:${n[2]};color:${n[3]}">${n[1]}</span>
-      <b>${n[4]}</b><p>${n[5]}</p></div></div>`).join('');
+// ===== البنرات والأخبار (ديناميكية من الـ API) =====
+const CAT_COLOR={'موعد':['var(--blue-soft)','#3b6eff'],'نصيحة':['var(--green-soft)','#3aa76d'],'خبر':['var(--orange-soft)','#e8843a'],'موعد مهم':['var(--blue-soft)','#3b6eff']};
+async function loadBanners(){
+  try{
+    const banners=await api('/banners');
+    const slider=$('#slider'),dots=$('#dots');
+    if(!banners.length){slider.style.display='none';return;}
+    slider.innerHTML=banners.map((b,i)=>`
+      <div class="slide ${b.gradient||'s'+((i%3)+1)}"><div class="orb"></div>
+        <span class="tag">${icon(b.icon||'megaphone',14)} ${b.tag||''}</span>
+        <div><h3>${b.title}</h3><p>${b.subtitle||''}</p></div></div>`).join('');
+    dots.innerHTML=banners.map((_,i)=>`<i class="${i===0?'on':''}"></i>`).join('');
+    initSlider(banners.length);
+  }catch(e){$('#slider').style.display='none';}
+}
+async function loadNews(){
+  try{
+    const news=await api('/news');
+    $('#newsList').innerHTML=news.map(n=>{
+      const[bg,col]=CAT_COLOR[n.category]||['var(--blue-soft)','#3b6eff'];
+      return `<div class="news-card"><div class="ni" style="background:${bg};color:${col}">${icon(n.icon||'news',24)}</div>
+        <div style="flex:1"><span class="cat" style="background:${bg};color:${col}">${n.category||'خبر'}</span>
+          <b>${n.title}</b><p>${n.body||''}</p></div></div>`;}).join('');
+  }catch(e){$('#newsList').innerHTML='';}
+}
 
 // أيقونات الرئيسية الثابتة
 (function fillStaticIcons(){
@@ -635,13 +659,21 @@ $('#newsList').innerHTML=NEWS.map(n=>`
   const dsi=$('#dsi'),usi=$('#usi');
   if(dsi)dsi.innerHTML=icon('search',18);
   if(usi)usi.innerHTML=icon('search',18);
-  const st1=$('#sl-tag1'),st2=$('#sl-tag2'),st3=$('#sl-tag3');
-  if(st1)st1.innerHTML=icon('megaphone',14)+' موعد مهم';
-  if(st2)st2.innerHTML=icon('bulb',14)+' نصيحة';
-  if(st3)st3.innerHTML=icon('news',14)+' خبر';
-  // أيقونات بطاقات المزيد
   $$('[data-ic]').forEach(el=>{el.innerHTML=icon(el.dataset.ic==='chev'?'chev':el.dataset.ic, el.dataset.ic==='chev'?18:26);});
 })();
+loadBanners();loadNews();
+
+// ===== الإعدادات العامة (اسم الموقع، الترحيب، إنستغرام) =====
+async function loadSettings(){
+  try{
+    const s=await api('/settings');
+    if(s.hero_greeting)$('#heroGreet').textContent=s.hero_greeting;
+    if(s.hero_sub)$('#heroSub').textContent=s.hero_sub;
+    if(s.instagram){const ig=document.querySelector('.appbar-avatar');if(ig)ig.href=s.instagram;}
+    if(s.site_name){const nm=document.querySelector('.appbar-name');if(nm)nm.childNodes[0].textContent='درب التبانة ';}
+  }catch(e){}
+}
+loadSettings();
 
 // ===== الأقسام (مجمّعة حسب التخصص) =====
 let curBranch='';

@@ -27926,5 +27926,85 @@
    "file_type": "نموذج",
    "size_kb": 640
   }
- ]
+ ],
+ "banners": [
+  {
+   "id": "b1",
+   "title": "انطلاق التقديم المركزي 2026",
+   "subtitle": "تعرّف على المواعيد والتعليمات الجديدة",
+   "tag": "موعد مهم",
+   "icon": "megaphone",
+   "gradient": "s1",
+   "link": "",
+   "is_active": true,
+   "sort_order": 0
+  },
+  {
+   "id": "b2",
+   "title": "خمس نصائح قبل ترتيب رغباتك",
+   "subtitle": "رتّب رغباتك بذكاء لتضمن مقعدك",
+   "tag": "نصيحة",
+   "icon": "bulb",
+   "gradient": "s2",
+   "link": "",
+   "is_active": true,
+   "sort_order": 1
+  },
+  {
+   "id": "b3",
+   "title": "إعلان نتائج السادس الإعدادي",
+   "subtitle": "استعلم عن نتيجتك عبر المنصة الرسمية",
+   "tag": "خبر",
+   "icon": "news",
+   "gradient": "s3",
+   "link": "",
+   "is_active": true,
+   "sort_order": 2
+  }
+ ],
+ "quick_links": [
+  {
+   "id": "q1",
+   "label": "المحاكاة",
+   "icon": "target",
+   "target": "compare",
+   "color": "b",
+   "is_active": true,
+   "sort_order": 0
+  },
+  {
+   "id": "q2",
+   "label": "الأقسام",
+   "icon": "cap",
+   "target": "depts",
+   "color": "g",
+   "is_active": true,
+   "sort_order": 1
+  },
+  {
+   "id": "q3",
+   "label": "الجامعات",
+   "icon": "building",
+   "target": "unis",
+   "color": "o",
+   "is_active": true,
+   "sort_order": 2
+  },
+  {
+   "id": "q4",
+   "label": "المكتبة",
+   "icon": "library",
+   "target": "lib",
+   "color": "p",
+   "is_active": true,
+   "sort_order": 3
+  }
+ ],
+ "settings": {
+  "site_name": "درب التبانة الجامعي",
+  "tagline": "طريقك الذكي نحو مستقبلك الجامعي",
+  "instagram": "https://instagram.com/4o62",
+  "hero_greeting": "أهلاً بك",
+  "hero_sub": "لنجد درب مستقبلك الجامعي"
+ }
 }
