@@ -274,4 +274,9 @@ r.get('/departments/:id/rates', async (req, res) => {
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+r.post('/admin/import-tsv', requireAdmin, async (req, res) => {
+  try { res.json(await store.importTSV(req.body.tsv)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 export default r;

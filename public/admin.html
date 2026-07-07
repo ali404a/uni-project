@@ -522,6 +522,41 @@ async function saveUni(id){
     closeModal();filterUnis();
   }catch(e){toast(e.message,true);}
 }
+
+function bulkImportModal() {
+  openModal(`
+    <h3>استيراد بيانات الجامعات الأهلية</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.5">
+      قم بنسخ البيانات مباشرة من ملف الإكسل (Excel) ولصقها هنا.<br>
+      <b>الترتيب المطلوب للأعمدة من اليمين لليسار:</b><br>
+      الجامعة | الكلية | القسم | الفرع (علمي/أدبي) | معدل القبول | الأجر السنوي | سنوات الدراسة
+    </p>
+    <div class="field">
+      <textarea id="bulkData" rows="12" placeholder="الصق البيانات هنا..." style="font-family:monospace;white-space:pre;overflow:auto"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn green" onclick="submitBulkImport()">استيراد البيانات</button>
+      <button class="btn ghost" onclick="closeModal()">إغلاق</button>
+    </div>
+  `);
+}
+
+async function submitBulkImport() {
+  const tsv = $('#bulkData').value.trim();
+  if (!tsv) return toast('الرجاء إدخال البيانات', true);
+  
+  openModal('<div class="loading"><div class="spin"></div>جارٍ معالجة وإدخال البيانات، يرجى الانتظار...</div>');
+  try {
+    const res = await api('/admin/import-tsv', { method: 'POST', body: { tsv } });
+    toast('تم استيراد ' + res.count + ' سجل بنجاح!');
+    closeModal();
+    renderPriv();
+  } catch (e) {
+    toast(e.message, true);
+    closeModal();
+  }
+}
+
 function delUni(id,name){
   confirmModal(`حذف جامعة "${name}"؟ سيُحذف كل ما يتبعها.`,async()=>{
     try{await api('/admin/universities/'+id,{method:'DELETE'});
@@ -544,6 +579,7 @@ async function renderPriv(){
       <div class="page-sub">إدارة الجامعات الأهلية وكلياتها وأقسامها، وعدّل الأجور وترتيبها</div>
       <div class="toolbar">
         <button class="btn green sm" onclick="uniModal({type:'أهلية'})">${ico('plus',16)} إضافة جامعة أهلية</button>
+        <button class="btn sm" onclick="bulkImportModal()" style="margin-right:10px">استيراد عبر Excel (لصق مباشر)</button>
       </div>
       <div class="chart-card">
         <h3>ترتيب الجامعات الأهلية (اسحب لإعادة الترتيب)</h3>

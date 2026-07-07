@@ -360,6 +360,54 @@ export const store = {
     return true;
   },
 
+  // ── الاستيراد الشامل من Excel ──
+  async importTSV(tsv) {
+    const rows = tsv.split('\n').map(r => r.split('\t').map(c => c.trim())).filter(r => r.length > 1 && r.join(''));
+    // Expected format: University, College, Department, Branch, Rate, Fee, Years
+    if (rows.length > 0 && rows[0][0] && rows[0][0].includes('الجامعة')) rows.shift(); // skip header
+
+    let inserted = 0;
+    for (const row of rows) {
+      let [uniName, colName, deptName, branch, minRate, fee, years] = row;
+      if (!uniName || !deptName) continue;
+      
+      minRate = parseFloat(minRate) || 0;
+      fee = fee ? parseInt(fee.replace(/\D/g, '')) : 0;
+      years = parseInt(years) || 4;
+      branch = branch || 'علمي';
+      colName = colName || '';
+
+      if (usingSupabase) {
+        // 1. Get or Create University
+        let { data: uni } = await supabaseAdmin.from('universities').select('id').eq('name', uniName).eq('type', 'أهلية').single();
+        if (!uni) {
+          const res = await supabaseAdmin.from('universities').insert({ name: uniName, type: 'أهلية' }).select().single();
+          uni = res.data;
+        }
+        // 2. Get or Create College
+        let { data: col } = await supabaseAdmin.from('colleges').select('id').eq('university_id', uni.id).eq('name', colName).single();
+        if (!col) {
+          const res = await supabaseAdmin.from('colleges').insert({ university_id: uni.id, name: colName }).select().single();
+          col = res.data;
+        }
+        // 3. Get or Create Department
+        let { data: dept } = await supabaseAdmin.from('departments').select('id').eq('college_id', col.id).eq('name', deptName).eq('branch', branch).single();
+        if (!dept) {
+          const res = await supabaseAdmin.from('departments').insert({ college_id: col.id, name: deptName, branch: branch, study_years: years, tuition_fee: fee }).select().single();
+          dept = res.data;
+        } else {
+          await supabaseAdmin.from('departments').update({ tuition_fee: fee, study_years: years }).eq('id', dept.id);
+        }
+        // 4. Upsert Admission Rate for 2025
+        if (minRate > 0) {
+           await supabaseAdmin.from('admission_rates').upsert({ department_id: dept.id, year: 2025, branch: branch, min_rate: minRate }, { onConflict: 'department_id, year, branch' });
+        }
+        inserted++;
+      }
+    }
+    return { success: true, count: inserted };
+  },
+
   // ── تعديل الحد الأدنى للقبول ──
   async setAdmissionRate(departmentId, { year = 2025, branch = 'علمي', min_rate }) {
     if (usingSupabase) {
