@@ -512,31 +512,29 @@ function delUni(id,name){
 }
 
 // ═══════════ 4) الأهلية والأجور + الترتيب ═══════════
-let PRIV_UNIS=[],PRIV_DEPTS=[];
+let PRIV_UNIS=[], PRIV_DEPTS=[], ALL_COLLEGES=[];
 async function renderPriv(){
   const m=$('#main');
   m.innerHTML='<div class="loading"><div class="spin"></div>جارٍ التحميل...</div>';
   try{
     PRIV_UNIS=await api('/universities?type=أهلية');
     PRIV_DEPTS=await api('/departments?uniType=أهلية');
+    ALL_COLLEGES=await api('/colleges');
     m.innerHTML=`
-      <div class="page-title">الجامعات الأهلية والأجور</div>
-      <div class="page-sub">رتّب الجامعات بالسحب، وعدّل الأجور السنوية لكل قسم</div>
+      <div class="page-title">الجامعات الأهلية</div>
+      <div class="page-sub">إدارة الجامعات الأهلية وكلياتها وأقسامها، وعدّل الأجور وترتيبها</div>
+      <div class="toolbar">
+        <button class="btn green sm" onclick="uniModal({type:'أهلية'})">${ico('plus',16)} إضافة جامعة أهلية</button>
+      </div>
       <div class="chart-card">
         <h3>ترتيب الجامعات الأهلية (اسحب لإعادة الترتيب)</h3>
         <div id="privOrder"></div>
         <button class="btn sm" style="margin-top:14px" onclick="saveOrder()">حفظ الترتيب</button>
-      </div>
-      <div class="chart-card">
-        <h3>الأجور السنوية</h3>
-        <div class="toolbar"><select id="privUniSel" onchange="renderPrivFees()">
-          ${PRIV_UNIS.map(u=>`<option value="${u.id}">${u.name}</option>`).join('')}
-        </select></div>
-        <div id="privFees"></div>
       </div>`;
-    renderPrivOrder();renderPrivFees();
+    renderPrivOrder();
   }catch(e){m.innerHTML=`<div class="empty">${ico('empty',56)}<p>${e.message}</p></div>`;}
 }
+
 function renderPrivOrder(){
   $('#privOrder').innerHTML=PRIV_UNIS.map((u,i)=>`
     <div class="data-card" draggable="true" data-id="${u.id}"
@@ -544,6 +542,11 @@ function renderPrivOrder(){
       <button class="icon-btn drag">${ico('drag',17)}</button>
       <div class="dc-main"><b>${u.name}</b><span>${u.city||''} · ${PRIV_DEPTS.filter(d=>d.university_id===u.id).length} قسم</span></div>
       <span class="dc-badge badge-priv">#${i+1}</span>
+      <div class="dc-actions">
+        <button class="btn sm" style="margin-right:8px" onclick='renderPrivHierarchy(${JSON.stringify(u.id)})'>إدارة الكليات والأقسام</button>
+        <button class="icon-btn edit" onclick='uniModal(${JSON.stringify(u)})' title="تعديل">${ico('edit',17)}</button>
+        <button class="icon-btn del" onclick='delUni(${JSON.stringify(u.id)},${JSON.stringify(u.name)})' title="حذف">${ico('trash',17)}</button>
+      </div>
     </div>`).join('');
 }
 let dragIdx=null;
@@ -557,18 +560,190 @@ async function saveOrder(){
     toast('تم حفظ الترتيب');
   }catch(e){toast(e.message,true);}
 }
-function renderPrivFees(){
-  const uid=$('#privUniSel').value;
-  const depts=PRIV_DEPTS.filter(d=>d.university_id===uid);
-  $('#privFees').innerHTML=depts.length?depts.map(d=>`
-    <div class="data-card">
-      <div class="dc-main"><b>${d.name}</b><span>${d.branch} · قبول ${d.last_rate||'—'}٪</span></div>
-      <span class="dc-badge badge-priv">${fee(d.annual_fee)}</span>
-      <div class="dc-actions">
-        <button class="icon-btn edit" onclick='feeModal(${JSON.stringify(d.id)},${JSON.stringify(d.name)},${d.annual_fee||0})'>${ico('edit',17)}</button>
-      </div>
-    </div>`).join(''):'<div class="count-info">لا توجد أقسام</div>';
+
+// ── إدارة هرمية الجامعة الأهلية ──
+let currentUniId = null;
+function renderPrivHierarchy(uniId) {
+  currentUniId = uniId;
+  const uni = PRIV_UNIS.find(u => u.id === uniId);
+  const m = $('#main');
+  m.innerHTML = `
+    <div class="page-title" style="display:flex;align-items:center;gap:12px">
+      <button class="icon-btn" onclick="renderPriv()" title="الرجوع" style="background:var(--blue-soft);color:var(--blue);font-size:18px;">🔙</button> 
+      إدارة: ${uni.name}
+    </div>
+    <div class="page-sub">أضف كليات وأقسام وعدّل الأجور والحدود الدنيا. اسحب الأقسام لترتيبها.</div>
+    <div class="toolbar">
+      <button class="btn green sm" onclick="collegeModal(null, '${uniId}')">${ico('plus',16)} إضافة كلية</button>
+      <button class="btn green sm" onclick="deptPrivModal('${uniId}')">${ico('plus',16)} إضافة قسم</button>
+    </div>
+    <div id="uniHierarchy"></div>
+  `;
+  renderHierarchyLists(uniId);
 }
+
+function renderHierarchyLists(uniId) {
+  const cols = ALL_COLLEGES.filter(c => c.university_id === uniId).sort((a,b)=>(a.sort_order||1000) - (b.sort_order||1000));
+  const depts = PRIV_DEPTS.filter(d => d.university_id === uniId).sort((a,b)=>(a.sort_order||1000) - (b.sort_order||1000));
+  
+  let html = '';
+  cols.forEach(c => {
+    const cDepts = depts.filter(d => d.college_id === c.id);
+    html += `
+      <div class="chart-card" style="margin-bottom:16px;padding:20px;">
+        <div class="toolbar" style="margin-bottom:12px;border-bottom:1px solid var(--line);padding-bottom:12px;">
+          <h3 style="margin:0;flex:1">${c.name} <span class="dc-badge badge-gov" style="margin-right:8px;font-size:10px">${c.slug}</span></h3>
+          <button class="icon-btn edit" onclick='collegeModal(${JSON.stringify(c)},"${uniId}")'>${ico('edit',17)}</button>
+          <button class="icon-btn del" onclick='delCollege(${JSON.stringify(c.id)},${JSON.stringify(c.name)},"${uniId}")'>${ico('trash',17)}</button>
+        </div>
+        <div class="depts-list" id="depts-${c.id}">
+          ${cDepts.map((d,i) => `
+            <div class="data-card" draggable="true" data-id="${d.id}" ondragstart="dragDeptStart(event,${i},'${c.id}')" ondragover="event.preventDefault()" ondrop="dropDept(event,${i},'${c.id}')" style="margin-right:24px;padding:10px 14px;box-shadow:none;border-color:var(--blue-soft)">
+              <button class="icon-btn drag">${ico('drag',17)}</button>
+              <div class="dc-main"><b>${d.name}</b><span>${d.branch} · ${d.last_rate!=null?d.last_rate+'٪':'—'}</span></div>
+              <span class="dc-badge badge-priv">${fee(d.annual_fee)}</span>
+              <div class="dc-actions">
+                <button class="icon-btn edit" onclick='feeModal(${JSON.stringify(d.id)},${JSON.stringify(d.name)},${d.annual_fee||0})' title="تعديل الأجر">${ico('edit',17)}</button>
+                <button class="icon-btn edit" style="background:var(--orange-soft);color:var(--orange)" onclick='deptPrivModal("${uniId}",${JSON.stringify(d)})' title="تعديل القسم">${ico('edit',17)}</button>
+                <button class="icon-btn del" onclick='delDeptPriv(${JSON.stringify(d.id)},${JSON.stringify(d.name)},"${uniId}")' title="حذف القسم">${ico('trash',17)}</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <button class="btn sm ghost" style="margin-top:12px;margin-right:24px;" onclick="saveDeptOrder('${c.id}')">حفظ ترتيب الأقسام للكلية</button>
+      </div>
+    `;
+  });
+  $('#uniHierarchy').innerHTML = html || '<div class="empty">${ico("empty",56)}<p>لا توجد كليات، قم بإضافة كلية أولاً</p></div>';
+}
+
+let dragDeptIdx = null;
+let dragDeptCol = null;
+function dragDeptStart(e, i, colId) { dragDeptIdx = i; dragDeptCol = colId; }
+function dropDept(e, i, colId) {
+  e.preventDefault();
+  if (dragDeptIdx === null || dragDeptIdx === i || dragDeptCol !== colId) return;
+  const deptsInCol = PRIV_DEPTS.filter(d => d.college_id === colId).sort((a,b)=>(a.sort_order||1000) - (b.sort_order||1000));
+  const item = deptsInCol.splice(dragDeptIdx, 1)[0];
+  deptsInCol.splice(i, 0, item);
+  deptsInCol.forEach((d, index) => { d.sort_order = index; });
+  dragDeptIdx = null; dragDeptCol = null;
+  renderHierarchyLists(currentUniId);
+}
+async function saveDeptOrder(colId) {
+  const deptsInCol = PRIV_DEPTS.filter(d => d.college_id === colId).sort((a,b)=>(a.sort_order||1000) - (b.sort_order||1000));
+  try {
+    await api('/admin/departments/reorder', { method: 'POST', body: { order: deptsInCol.map(d => d.id) } });
+    toast('تم حفظ ترتيب الأقسام');
+  } catch(e) { toast(e.message, true); }
+}
+
+function collegeModal(c, uniId) {
+  const e = c || {};
+  openModal(`
+    <h3>${c ? 'تعديل كلية' : 'إضافة كلية'}</h3>
+    <div class="field"><label>اسم الكلية</label><input id="cName" value="${e.name||''}" placeholder="مثال: كلية الصيدلة"></div>
+    <div class="field"><label>رابط مميز (slug بالانجليزية)</label><input id="cSlug" value="${e.slug||''}" placeholder="مثال: pharmacy"></div>
+    <div class="modal-actions">
+      <button class="btn green" onclick='saveCollege(${c?JSON.stringify(c.id):'null'}, "${uniId}")'>${c?'حفظ':'إضافة'}</button>
+      <button class="btn ghost" onclick="closeModal()">إلغاء</button>
+    </div>
+  `);
+}
+async function saveCollege(id, uniId) {
+  const name = $('#cName').value.trim();
+  const slug = $('#cSlug').value.trim();
+  if(!name || !slug){ toast('أدخل الاسم والـ slug', true); return; }
+  const payload = { name, slug, university_id: uniId };
+  try {
+    if(id) {
+      await api('/admin/colleges/'+id, {method:'PATCH', body:payload});
+      const c = ALL_COLLEGES.find(x=>x.id===id); if(c) Object.assign(c, payload);
+      toast('تم الحفظ');
+    } else {
+      const nc = await api('/admin/colleges', {method:'POST', body:payload});
+      ALL_COLLEGES.push(nc); toast('تمت الإضافة');
+    }
+    closeModal(); renderHierarchyLists(uniId);
+  } catch(e) { toast(e.message, true); }
+}
+function delCollege(id, name, uniId) {
+  confirmModal(`حذف الكلية "${name}"؟ سيتم حذف جميع الأقسام بداخلها.`, async()=>{
+    try {
+      await api('/admin/colleges/'+id, {method:'DELETE'});
+      ALL_COLLEGES = ALL_COLLEGES.filter(c=>c.id!==id);
+      PRIV_DEPTS = PRIV_DEPTS.filter(d=>d.college_id!==id);
+      renderHierarchyLists(uniId); toast('تم الحذف');
+    } catch(e) { toast(e.message, true); }
+  });
+}
+
+function deptPrivModal(uniId, d) {
+  const cols = ALL_COLLEGES.filter(c => c.university_id === uniId);
+  if (!cols.length) { toast('يجب إضافة كلية أولاً', true); return; }
+  const e = d || {};
+  openModal(`
+    <h3>${d ? 'تعديل قسم' : 'إضافة قسم'}</h3>
+    <div class="field"><label>اسم القسم</label><input id="dpName" value="${e.name||''}" placeholder="مثال: طب الأسنان"></div>
+    <div class="field"><label>رابط مميز (slug بالانجليزية)</label><input id="dpSlug" value="${e.slug||''}" placeholder="مثال: dentistry"></div>
+    <div class="field"><label>الكلية</label>
+      <select id="dpCol">
+        ${cols.map(c => `<option value="${c.id}" ${e.college_id===c.id?'selected':''}>${c.name}</option>`).join('')}
+      </select>
+    </div>
+    <div class="row2">
+      <div class="field"><label>الفرع</label><select id="dpBranch"><option ${e.branch==='علمي'?'selected':''}>علمي</option><option ${e.branch==='أدبي'?'selected':''}>أدبي</option><option ${e.branch==='فنون'?'selected':''}>فنون</option></select></div>
+      <div class="field"><label>سنوات الدراسة</label><input type="number" id="dpYears" value="${e.study_years||4}" min="1" max="7"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>الحد الأدنى للقبول (٪)</label><input type="number" id="dpRate" placeholder="مثال: 85" step="0.01" value="${e.last_rate!=null?e.last_rate:''}"></div>
+      <div class="field"><label>الأجر السنوي (دينار)</label><input type="number" id="dpFee" placeholder="مثال: 8000000" value="${e.annual_fee||''}"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn green" onclick='saveDeptPriv(${d?JSON.stringify(d.id):'null'}, "${uniId}")'>${d?'حفظ':'إضافة'}</button>
+      <button class="btn ghost" onclick="closeModal()">إلغاء</button>
+    </div>
+  `);
+}
+async function saveDeptPriv(id, uniId) {
+  const name = $('#dpName').value.trim();
+  const slug = $('#dpSlug').value.trim();
+  const college_id = $('#dpCol').value;
+  const branch = $('#dpBranch').value;
+  const study_years = +$('#dpYears').value;
+  const min_rate = +$('#dpRate').value || null;
+  const annual_fee = +$('#dpFee').value || null;
+  if(!name || !slug) { toast('أدخل الاسم والـ slug', true); return; }
+  
+  const payload = { name, slug, college_id, branch, study_years, study_type: 'أهلي', annual_fee };
+  try {
+    if(id) {
+      await api('/admin/departments/'+id, {method:'PATCH', body:payload});
+      if(min_rate) await api('/admin/departments/'+id+'/rate', {method:'PUT', body:{min_rate, year:2025, branch}});
+      const d = PRIV_DEPTS.find(x=>x.id===id); 
+      if(d) { Object.assign(d, payload); d.last_rate = min_rate; }
+      toast('تم الحفظ');
+    } else {
+      const nd = await api('/admin/departments', {method:'POST', body:payload});
+      if(min_rate) await api('/admin/departments/'+nd.id+'/rate', {method:'PUT', body:{min_rate, year:2025, branch}});
+      nd.last_rate = min_rate;
+      nd.university_id = uniId; 
+      PRIV_DEPTS.push(nd);
+      toast('تمت الإضافة');
+    }
+    closeModal(); renderHierarchyLists(uniId);
+  } catch(e) { toast(e.message, true); }
+}
+function delDeptPriv(id, name, uniId) {
+  confirmModal(`حذف القسم "${name}"؟`, async()=>{
+    try {
+      await api('/admin/departments/'+id, {method:'DELETE'});
+      PRIV_DEPTS = PRIV_DEPTS.filter(d=>d.id!==id);
+      renderHierarchyLists(uniId); toast('تم الحذف');
+    } catch(e) { toast(e.message, true); }
+  });
+}
+
 function feeModal(id,name,cur){
   openModal(`
     <h3>تعديل الأجر السنوي</h3>
@@ -584,7 +759,7 @@ async function saveFee(id){
   const annual_fee=+$('#mFee').value;
   try{await api('/admin/departments/'+id+'/fee',{method:'PUT',body:{annual_fee}});
     const d=PRIV_DEPTS.find(x=>x.id===id);if(d)d.annual_fee=annual_fee;
-    closeModal();renderPrivFees();toast('تم تحديث الأجر');
+    closeModal(); renderHierarchyLists(currentUniId); toast('تم تحديث الأجر');
   }catch(e){toast(e.message,true);}
 }
 

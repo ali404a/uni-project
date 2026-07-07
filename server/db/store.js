@@ -121,20 +121,27 @@ export const store = {
     return local.universities.find(u => u.slug === slug);
   },
 
-  // ── الكليات لجامعة ──
-  async collegesOf(universityId) {
+  // ── الكليات ──
+  async colleges({ universityId } = {}) {
     if (usingSupabase) {
-      const { data } = await supabase.from('colleges').select('*').eq('university_id', universityId);
+      let q = supabase.from('colleges').select('*').order('sort_order');
+      if (universityId) q = q.eq('university_id', universityId);
+      const { data } = await q;
       return data || [];
     }
-    return local.colleges.filter(c => c.university_id === universityId);
+    let list = local.colleges;
+    if (universityId) list = list.filter(c => c.university_id === universityId);
+    return list;
+  },
+  async collegesOf(universityId) {
+    return this.colleges({ universityId });
   },
 
   // ── الأقسام ──
   async departments({ branch, q, uniType } = {}) {
     let list;
     if (usingSupabase) {
-      let query = supabase.from('v_departments_full').select('*');
+      let query = supabase.from('v_departments_full').select('*').order('sort_order');
       if (branch) query = query.eq('branch', branch);
       if (uniType) query = query.eq('university_type', uniType);
       const { data } = await query;
@@ -266,6 +273,50 @@ export const store = {
     return true;
   },
 
+  // ── إدارة الكليات ──
+  async createCollege(payload) {
+    if (usingSupabase) {
+      const { data, error } = await supabaseAdmin.from('colleges').insert(payload).select().single();
+      if (error) throw new Error(error.message);
+      return data;
+    }
+    const c = { id: 'c-new-' + Date.now(), sort_order: 1000, ...payload };
+    local.colleges.push(c); return c;
+  },
+  async updateCollege(id, patch) {
+    if (usingSupabase) {
+      const { data, error } = await supabaseAdmin.from('colleges').update(patch).eq('id', id).select().single();
+      if (error) throw new Error(error.message);
+      return data;
+    }
+    const c = local.colleges.find(x => x.id === id);
+    if (c) Object.assign(c, patch);
+    return c;
+  },
+  async deleteCollege(id) {
+    if (usingSupabase) {
+      const { error } = await supabaseAdmin.from('colleges').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+      return true;
+    }
+    const i = local.colleges.findIndex(x => x.id === id);
+    if (i >= 0) local.colleges.splice(i, 1);
+    return true;
+  },
+  async reorderColleges(orderedIds) {
+    if (usingSupabase) {
+      for (let i = 0; i < orderedIds.length; i++)
+        await supabaseAdmin.from('colleges').update({ sort_order: i }).eq('id', orderedIds[i]);
+      return true;
+    }
+    orderedIds.forEach((id, i) => {
+      const c = local.colleges.find(x => x.id === id);
+      if (c) c.sort_order = i;
+    });
+    return true;
+  },
+
+
   // ── إدارة الأقسام ──
   async createDepartment(payload) {
     if (usingSupabase) {
@@ -294,6 +345,18 @@ export const store = {
     }
     const i = local.departments.findIndex(x => x.id === id);
     if (i >= 0) local.departments.splice(i, 1);
+    return true;
+  },
+  async reorderDepartments(orderedIds) {
+    if (usingSupabase) {
+      for (let i = 0; i < orderedIds.length; i++)
+        await supabaseAdmin.from('departments').update({ sort_order: i }).eq('id', orderedIds[i]);
+      return true;
+    }
+    orderedIds.forEach((id, i) => {
+      const d = local.departments.find(x => x.id === id);
+      if (d) d.sort_order = i;
+    });
     return true;
   },
 

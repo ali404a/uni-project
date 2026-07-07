@@ -16,6 +16,9 @@ r.get('/universities/:slug', async (req, res) => {
   res.json(uni);
 });
 
+// ── الكليات ──
+r.get('/colleges', async (req, res) => res.json(await store.colleges({ universityId: req.query.universityId })));
+
 // ── الأقسام ──
 // ── الأقسام مجمّعة حسب التخصص (اسم القسم) ──
 r.get('/departments/grouped', async (req, res) => {
@@ -173,6 +176,24 @@ r.post('/admin/universities/reorder', requireAdmin, async (req, res) => {
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+// إدارة الكليات
+r.post('/admin/colleges', requireAdmin, async (req, res) => {
+  try { res.status(201).json(await store.createCollege(req.body)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+r.patch('/admin/colleges/:id', requireAdmin, async (req, res) => {
+  try { res.json(await store.updateCollege(req.params.id, req.body)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+r.delete('/admin/colleges/:id', requireAdmin, async (req, res) => {
+  try { await store.deleteCollege(req.params.id); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+r.post('/admin/colleges/reorder', requireAdmin, async (req, res) => {
+  try { await store.reorderColleges(req.body.order || []); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 // إدارة الأقسام
 r.post('/admin/departments', requireAdmin, async (req, res) => {
   try { res.status(201).json(await store.createDepartment(req.body)); }
@@ -184,6 +205,11 @@ r.patch('/admin/departments/:id', requireAdmin, async (req, res) => {
 });
 r.delete('/admin/departments/:id', requireAdmin, async (req, res) => {
   try { await store.deleteDepartment(req.params.id); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+// ترتيب الأقسام
+r.post('/admin/departments/reorder', requireAdmin, async (req, res) => {
+  try { await store.reorderDepartments(req.body.order || []); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 // تعديل الحد الأدنى للقبول
