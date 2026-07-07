@@ -118,4 +118,90 @@ r.post('/contact', async (req, res) => {
   res.status(201).json({ ok: true, id: saved.id });
 });
 
+// ═══════════ الإحصائيات (تتبّع خفيف) ═══════════
+import crypto from 'crypto';
+// تتبّع حدث — لا يؤخّر الاستجابة (fire-and-forget)
+r.post('/track', (req, res) => {
+  res.json({ ok: true }); // نردّ فوراً
+  try {
+    const { event } = req.body || {};
+    if (!['visit', 'simulation', 'print'].includes(event)) return;
+    // بصمة مجهّلة من IP + user-agent (لا تُخزّن البيانات الخام)
+    const raw = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '') + (req.headers['user-agent'] || '');
+    const hash = crypto.createHash('sha256').update(raw + 'darb-salt').digest('hex').slice(0, 32);
+    store.trackEvent(event, hash).catch(() => {}); // بلا انتظار
+  } catch {}
+});
+
+// ═══════════ الأدمن ═══════════
+import { login, requireAdmin } from '../auth.js';
+
+r.post('/admin/login', async (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) return res.status(400).json({ error: 'أدخل اسم المستخدم وكلمة المرور' });
+  const result = await login(username, password);
+  if (!result) return res.status(401).json({ error: 'بيانات الدخول غير صحيحة' });
+  res.json(result);
+});
+
+r.get('/admin/me', requireAdmin, (req, res) => res.json({ admin: req.admin }));
+
+// لوحة الإحصائيات
+r.get('/admin/stats', requireAdmin, async (_req, res) => {
+  res.json(await store.statsSummary());
+});
+
+// إدارة الجامعات
+r.post('/admin/universities', requireAdmin, async (req, res) => {
+  try { res.status(201).json(await store.createUniversity(req.body)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+r.patch('/admin/universities/:id', requireAdmin, async (req, res) => {
+  try { res.json(await store.updateUniversity(req.params.id, req.body)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+r.delete('/admin/universities/:id', requireAdmin, async (req, res) => {
+  try { await store.deleteUniversity(req.params.id); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+// ترتيب الجامعات الأهلية
+r.post('/admin/universities/reorder', requireAdmin, async (req, res) => {
+  try { await store.reorderUniversities(req.body.order || []); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// إدارة الأقسام
+r.post('/admin/departments', requireAdmin, async (req, res) => {
+  try { res.status(201).json(await store.createDepartment(req.body)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+r.patch('/admin/departments/:id', requireAdmin, async (req, res) => {
+  try { res.json(await store.updateDepartment(req.params.id, req.body)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+r.delete('/admin/departments/:id', requireAdmin, async (req, res) => {
+  try { await store.deleteDepartment(req.params.id); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+// تعديل الحد الأدنى للقبول
+r.put('/admin/departments/:id/rate', requireAdmin, async (req, res) => {
+  try { res.json(await store.setAdmissionRate(req.params.id, req.body)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+// تعديل رسوم القسم الأهلي
+r.put('/admin/departments/:id/fee', requireAdmin, async (req, res) => {
+  try { res.json(await store.setDepartmentFee(req.params.id, req.body.annual_fee)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// إدارة الأخبار
+r.post('/admin/news', requireAdmin, async (req, res) => {
+  try { res.status(201).json(await store.createNews(req.body)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+r.delete('/admin/news/:id', requireAdmin, async (req, res) => {
+  try { await store.deleteNews(req.params.id); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 export default r;

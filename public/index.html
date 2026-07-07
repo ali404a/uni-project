@@ -172,7 +172,9 @@ body{
   border:1px solid var(--line);cursor:pointer;transition:.2s;position:relative;overflow:hidden}
 .dept-card:active{transform:scale(.985)}
 .count-bar{font-size:12.5px;font-weight:700;color:var(--muted);margin:0 20px 12px;padding:8px 14px;background:var(--card);border-radius:12px;border:1px solid var(--line);text-align:center}
-.uni-row{background:var(--card);border-radius:16px;padding:14px 16px;margin:0 20px 10px;box-shadow:var(--shadow-sm);border:1px solid var(--line);display:flex;align-items:center;gap:12px;transition:.2s}
+.uni-row{background:var(--card);border-radius:16px;padding:14px 16px;margin:0 20px 10px;box-shadow:var(--shadow-sm);border:1px solid var(--line);display:flex;align-items:center;gap:12px;transition:.2s;cursor:pointer}
+.uni-row:active{transform:scale(.99)}
+.uni-row .ur-arrow{color:var(--muted);flex:none}
 .uni-row .ur-rank{width:30px;height:30px;border-radius:9px;background:var(--blue-soft);color:var(--blue);display:grid;place-items:center;font-weight:900;font-size:13px;flex:none}
 .uni-row .ur-info{flex:1;min-width:0}
 .uni-row .ur-info b{font-size:14.5px;font-weight:800;display:block}
@@ -349,7 +351,7 @@ body{
   <div class="appbar">
     <div class="appbar-brand" onclick="go('home')">
       <div class="appbar-logo">
-        <svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" stroke="url(#hg)" stroke-width="2" opacity=".5"/><path d="M8 30 Q20 8 40 18" stroke="url(#hg)" stroke-width="2.6" fill="none" stroke-linecap="round"/><circle cx="8" cy="30" r="2.8" fill="#7ed3a2"/><circle cx="31" cy="16" r="2.4" fill="#ffb572"/><circle cx="40" cy="18" r="3.2" fill="#3b6eff"/><defs><linearGradient id="hg" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#3b6eff"/><stop offset="1" stop-color="#7ea0ff"/></linearGradient></defs></svg>
+        <img src="logo.png" alt="درب التبانة" style="width:100%;height:100%;object-fit:contain">
       </div>
       <div class="appbar-name">درب التبانة <span>الجامعي</span></div>
     </div>
@@ -696,14 +698,44 @@ function openGroup(name){
       <div class="m"><b>${g.max_rate!=null?g.max_rate+'٪':'—'}</b><span>أعلى قبول</span></div>
       <div class="m"><b>${g.min_rate!=null?g.min_rate+'٪':'—'}</b><span>أدنى قبول</span></div>
     </div>
-    <div class="sec-head"><h3>الجامعات المتاحة</h3><span style="color:var(--muted);font-size:12px">${g.count} جامعة</span></div>
+    <div class="sec-head"><h3>الجامعات المتاحة</h3><span style="color:var(--muted);font-size:12px">اضغط لعرض معلومات الجامعة</span></div>
     ${g.offerings.map((o,i)=>`
-      <div class="uni-row">
+      <div class="uni-row" onclick='openUniInfo(${JSON.stringify(o.university_id)},${JSON.stringify(g)})'>
         <div class="ur-rank">${i+1}</div>
-        <div class="ur-info"><b>${o.university_name}</b><span>${o.college_name||''}</span></div>
+        <div class="ur-info"><b>${o.university_name}</b><span>${g.study_years} سنوات · ${o.college_name||g.college_name||''}</span></div>
         <div class="ur-rate"><b>${o.last_rate!=null?o.last_rate+'٪':'—'}</b><small>${o.last_year||'قبول'}</small></div>
+        <div class="ur-arrow">${icon('chev',18)}</div>
       </div>`).join('')}
     <div style="height:12px"></div>`;
+}
+
+// عرض معلومات الجامعة في سياق التخصص
+async function openUniInfo(uniId, g){
+  go('unidetail');
+  $('#uniDetailBody').innerHTML=`<div class="loading"><div class="spin"></div>جارٍ التحميل...</div>`;
+  try{
+    // اعثر على slug الجامعة من قائمة الجامعات
+    if(!window.__ALLUNIS) window.__ALLUNIS=await api('/universities');
+    const u=window.__ALLUNIS.find(x=>x.id===uniId);
+    const offering=g.offerings.find(o=>o.university_id===uniId);
+    const bi=branchInfo(g.branch);
+    // كل أقسام هذه الجامعة في هذا التخصص
+    $('#uniDetailBody').innerHTML=`
+      <div class="detail-hero"><div class="orb"></div>
+        <div class="di">${icon('building',30)}</div><h2>${u?u.name:(offering?offering.university_name:'الجامعة')}</h2>
+        <p>${u&&u.description?u.description:'جامعة حكومية عراقية ضمن القبول المركزي'}</p></div>
+      <div class="mini-stats">
+        <div class="m"><b>${g.study_years}</b><span>سنوات الدراسة</span></div>
+        <div class="m"><b>${offering&&offering.last_rate!=null?offering.last_rate+'٪':'—'}</b><span>معدل القبول</span></div>
+        <div class="m"><b>${bi.label}</b><span>الفرع</span></div>
+      </div>
+      <div class="info-card"><h4><span class="d"></span>التخصص</h4><p>${g.name} — ${offering?offering.college_name||g.college_name:g.college_name}</p></div>
+      ${u&&u.city?`<div class="info-card"><h4><span class="d"></span>الموقع</h4><p class="loc-line">${icon('pin',16)} ${u.city}${u.website?` · <a href="${u.website}" target="_blank" style="color:var(--blue)">الموقع الرسمي</a>`:''}</p></div>`:''}
+      ${u&&u.established?`<div class="info-card"><h4><span class="d"></span>سنة التأسيس</h4><p>${u.established}</p></div>`:''}
+      <div class="info-card"><h4><span class="d"></span>نوع الدراسة</h4><p>حكومي · صباحي</p></div>
+      <button class="btn ghost" onclick='openGroup(${JSON.stringify(g.name)})'>← رجوع لجامعات ${g.name}</button>
+      <div style="height:10px"></div>`;
+  }catch(e){$('#uniDetailBody').innerHTML=`<div class="empty"><div class="ei">${icon('question',44)}</div><p>${e.message}</p></div>`;}
 }
 $('#deptSearch').addEventListener('input',()=>renderDepts());
 $('#branchFilter').addEventListener('click',e=>{
@@ -768,6 +800,7 @@ async function runCompare(){
     const r=await api('/compare',{method:'POST',body:{name,avg,total,round,branch}});
     CMP=r; CMP.student.name=name||'الطالب';
     renderCompare();
+    track('simulation');
   }catch(e){
     $('#cmpResult').innerHTML=`<div class="empty"><div class="ei">${icon("question",44)}</div><p>${e.message}</p></div>
       <button class="btn ghost" onclick="resetCompare()">حاول مجدداً</button>`;
@@ -908,6 +941,7 @@ async function loadLib(){
 // ===== طباعة/تحميل الاستمارة A4 =====
 function printForm(download){
   if(!CMP)return;
+  track('print');
   const s=CMP.student;
   const today=new Date().toLocaleDateString('ar-IQ-u-nu-latn',{year:'numeric',month:'long',day:'numeric'});
   const deptRows=CMP.departments.map((d,i)=>`
@@ -922,9 +956,10 @@ function printForm(download){
   const html=`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
   <title>استمارة درب التبانة — ${s.name}</title>
   <style>
-    @page{size:A4;margin:14mm}
+    @page{size:A4;margin:16mm 14mm}
     *{margin:0;padding:0;box-sizing:border-box;font-family:'Cairo','Tajawal',Arial,sans-serif}
-    body{color:#1d2233;font-size:12px;line-height:1.6}
+    body{color:#1d2233;font-size:12px;line-height:1.6;padding:8mm 6mm}
+    @media print{body{padding:0}}
     .head{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #3b6eff;padding-bottom:12px;margin-bottom:6px}
     .head .brand{display:flex;align-items:center;gap:12px}
     .head .brand h1{font-size:20px;font-weight:900;color:#3b6eff}
@@ -982,20 +1017,28 @@ function printForm(download){
   </body></html>`;
 
   if(download){
-    // تحميل كملف PDF مباشرة عبر html2pdf
+    // تحميل PDF عبر html2pdf (مع مؤشر ومهلة أمان)
+    const btn=document.querySelector('.act-btn.pdf');
+    const orig=btn?btn.innerHTML:'';
+    if(btn){btn.innerHTML='جارٍ التحضير...';btn.style.opacity='.7';}
     const holder=document.createElement('div');
     holder.innerHTML=html.replace(/^[\s\S]*?<body>/,'').replace(/<\/body>[\s\S]*$/,'');
-    holder.style.cssText='position:fixed;left:-9999px;top:0;width:794px;background:#fff;padding:40px';
+    holder.style.cssText='position:fixed;left:-9999px;top:0;width:794px;background:#fff;padding:48px 44px';
     document.body.appendChild(holder);
-    const opt={margin:0,filename:`استمارة-${s.name}.pdf`,image:{type:'jpeg',quality:.98},
-      html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
-    const run=()=>html2pdf().set(opt).from(holder).save().then(()=>holder.remove()).catch(()=>{holder.remove();fallbackPrint(html);});
+    const restore=()=>{holder.remove();if(btn){btn.innerHTML=orig;btn.style.opacity='';}};
+    const opt={margin:0,filename:`استمارة-${s.name||'درب-التبانة'}.pdf`,image:{type:'jpeg',quality:.98},
+      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
+    const run=()=>{try{html2pdf().set(opt).from(holder).save().then(restore).catch(()=>{restore();fallbackPrint(html);});}
+      catch(e){restore();fallbackPrint(html);}};
     if(window.html2pdf){ run(); }
     else{
       const sc=document.createElement('script');
       sc.src='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-      sc.onload=run;
-      sc.onerror=()=>{holder.remove();fallbackPrint(html);}; // إن تعذّر التحميل، افتح نافذة الطباعة
+      let done=false;
+      sc.onload=()=>{done=true;run();};
+      sc.onerror=()=>{done=true;restore();fallbackPrint(html);};
+      // مهلة أمان: إن لم تُحمّل المكتبة خلال 6 ثوانٍ، استخدم الطباعة
+      setTimeout(()=>{if(!done){done=true;restore();fallbackPrint(html);}},6000);
       document.head.appendChild(sc);
     }
     return;
@@ -1004,10 +1047,20 @@ function printForm(download){
 }
 function fallbackPrint(html){
   const w=window.open('','_blank');
+  if(!w){alert('يرجى السماح بالنوافذ المنبثقة لطباعة الاستمارة');return;}
   w.document.write(html);
   w.document.close();
-  setTimeout(()=>{w.print();},400);
+  w.focus();
+  setTimeout(()=>{try{w.print();}catch(e){}},500);
 }
+
+// ═══ تتبّع خفيف (لا يؤثر على السرعة — fire-and-forget) ═══
+function track(event){
+  try{fetch(API+'/track',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({event}),keepalive:true}).catch(()=>{});}catch(e){}
+}
+// سجّل زيارة مرة واحدة لكل جلسة
+if(!sessionStorage.getItem('darb_visited')){sessionStorage.setItem('darb_visited','1');track('visit');}
 
 // تحميل أولي
 loadDepts();
