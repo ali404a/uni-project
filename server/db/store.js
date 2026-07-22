@@ -21,8 +21,51 @@ if (usingSupabase) {
   supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
   supabaseAdmin = SUPABASE_SERVICE ? createClient(SUPABASE_URL, SUPABASE_SERVICE) : supabase;
   console.log('✅ متصل بـ Supabase');
+  
+  // Seed Database if empty
+  setTimeout(async () => {
+    try {
+      const { count } = await supabaseAdmin.from('universities').select('*', { count: 'exact', head: true });
+      if (count === 0) {
+        console.log('🌱 Supabase is empty. Seeding from seed.json...');
+        await seedLocalData(supabaseAdmin, seed);
+      }
+    } catch(e) { console.error('Seed check error:', e); }
+  }, 3000);
 } else {
   console.log('⚠️  لا توجد مفاتيح Supabase — يعمل النظام بالبيانات المحلية (seed.json)');
+}
+
+async function seedLocalData(db, seedData) {
+  for (const uni of seedData.universities) {
+    const { data: eUni } = await db.from('universities').select('id').eq('name', uni.name).single();
+    let uniId = eUni?.id;
+    if (!uniId) {
+      const { data } = await db.from('universities').insert({ name: uni.name, type: uni.type, city: uni.city, is_active: true }).select().single();
+      uniId = data?.id;
+    }
+    if (!uniId) continue;
+    
+    const colleges = seedData.colleges.filter(c => c.university === uni.slug);
+    for (const col of colleges) {
+      const { data: eCol } = await db.from('colleges').select('id').eq('university_id', uniId).eq('name', col.name).single();
+      let colId = eCol?.id;
+      if (!colId) {
+        const { data } = await db.from('colleges').insert({ university_id: uniId, name: col.name }).select().single();
+        colId = data?.id;
+      }
+      if (!colId) continue;
+      
+      const depts = seedData.departments.filter(d => d.college === `${uni.slug}/${col.slug}`);
+      for (const dept of depts) {
+        const { data: eDept } = await db.from('departments').select('id').eq('college_id', colId).eq('name', dept.name).eq('branch', dept.branch).single();
+        if (!eDept) {
+          await db.from('departments').insert({ college_id: colId, name: dept.name, branch: dept.branch, study_years: dept.study_years || 4, tuition_fee: dept.tuition_fee || 0 });
+        }
+      }
+    }
+  }
+  console.log('✅ Supabase seeding complete!');
 }
 
 // ─────────── بناء نموذج محلي مترابط في الذاكرة ───────────
