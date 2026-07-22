@@ -21,17 +21,6 @@ if (usingSupabase) {
   supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
   supabaseAdmin = SUPABASE_SERVICE ? createClient(SUPABASE_URL, SUPABASE_SERVICE) : supabase;
   console.log('✅ متصل بـ Supabase');
-  
-  // Seed Database if empty
-  setTimeout(async () => {
-    try {
-      const { count } = await supabaseAdmin.from('universities').select('*', { count: 'exact', head: true });
-      if (count === 0) {
-        console.log('🌱 Supabase is empty. Seeding from seed.json...');
-        await seedLocalData(supabaseAdmin, seed);
-      }
-    } catch(e) { console.error('Seed check error:', e); }
-  }, 3000);
 } else {
   console.log('⚠️  لا توجد مفاتيح Supabase — يعمل النظام بالبيانات المحلية (seed.json)');
 }
@@ -454,9 +443,10 @@ export const store = {
   // ── تعديل الحد الأدنى للقبول ──
   async setAdmissionRate(departmentId, { year = 2025, branch = 'علمي', min_rate }) {
     if (usingSupabase) {
-      const { data, error } = await supabaseAdmin.from('admission_rates')
-        .upsert({ department_id: departmentId, year, branch, min_rate }, { onConflict: 'department_id, year, branch' })
-        .select().single();
+      const { data, error } = await supabaseAdmin.from('admission_rates').upsert(
+        { department_id: departmentId, year, branch, min_rate },
+        { onConflict: 'department_id, year, branch' }
+      ).select().single();
       if (error) throw new Error(error.message);
       return data;
     }
@@ -465,6 +455,13 @@ export const store = {
     const nr = { id: 'r-new-' + Date.now(), department_id: departmentId, year, branch, min_rate };
     local.admission_rates.push(nr); return nr;
   },
+
+  async forceSeed() {
+    if (!usingSupabase) return { msg: 'Not using Supabase' };
+    await seedLocalData(supabaseAdmin, seed);
+    return { success: true };
+  },
+
   async getHistoricalRates(departmentId) {
     if (usingSupabase) {
       const { data, error } = await supabase.from('admission_rates')
